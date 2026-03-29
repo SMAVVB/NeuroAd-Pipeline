@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """
 Comprehensive NeuroAd Pipeline Validation Script
 
@@ -171,7 +171,7 @@ except Exception as e:
 """
         
         returncode, stdout, stderr = self.run_command(
-            f"cd {tribe_dir} && CUDA_VISIBLE_DEVICES='' python3 -c '{import_cmd}'",
+            f"cd {tribe_dir} && CUDA_VISIBLE_DEVICES='' {sys.executable} -c '{import_cmd}'",
             timeout=60
         )
         
@@ -199,7 +199,7 @@ except Exception as e:
 """
         
         returncode, stdout, stderr = self.run_command(
-            f"cd {tribe_dir} && CUDA_VISIBLE_DEVICES='' python3 -c '{load_cmd}'",
+            f"cd {tribe_dir} && CUDA_VISIBLE_DEVICES='' {sys.executable} -c '{load_cmd}'",
             timeout=120
         )
         
@@ -230,7 +230,7 @@ except Exception as e:
 """
         
         returncode, stdout, stderr = self.run_command(
-            f"CUDA_VISIBLE_DEVICES='' python3 -c '{download_cmd}'",
+            f"CUDA_VISIBLE_DEVICES='' {sys.executable} -c '{download_cmd}'",
             timeout=60
         )
         
@@ -258,7 +258,7 @@ except Exception as e:
 """
         
         returncode, stdout, stderr = self.run_command(
-            f"CUDA_VISIBLE_DEVICES='' python3 -c '{inference_cmd}'",
+            f"CUDA_VISIBLE_DEVICES='' {sys.executable} -c '{inference_cmd}'",
             timeout=180
         )
         
@@ -291,7 +291,7 @@ except Exception as e:
 """
         
         returncode, stdout, stderr = self.run_command(
-            f"pip install deepgaze-pytorch -q && python3 -c '{deepgaze_cmd}'",
+            f"pip install deepgaze-pytorch -q && {sys.executable} -c '{deepgaze_cmd}'",
             timeout=120
         )
         
@@ -319,7 +319,7 @@ except Exception as e:
 """
             
             returncode, stdout, stderr = self.run_command(
-                f"CUDA_VISIBLE_DEVICES='' python3 -c '{test_cmd}'",
+                f"CUDA_VISIBLE_DEVICES='' {sys.executable} -c '{test_cmd}'",
                 timeout=60
             )
             
@@ -356,7 +356,7 @@ except Exception as e:
 """
         
         returncode, stdout, stderr = self.run_command(
-            f"cd {vinet_dir} && python3 -c '{vinet_import_cmd}'",
+            f"cd {vinet_dir} && {sys.executable} -c '{vinet_import_cmd}'",
             timeout=60
         )
         
@@ -387,7 +387,7 @@ except Exception as e:
 """
         
         returncode, stdout, stderr = self.run_command(
-            f"pip install hsemotion -q && python3 -c '{hsemotion_cmd}'",
+            f"pip install hsemotion -q && {sys.executable} -c '{hsemotion_cmd}'",
             timeout=120
         )
         
@@ -412,7 +412,7 @@ except Exception as e:
 """
         
         returncode, stdout, stderr = self.run_command(
-            f"pip install git+https://github.com/openai/CLIP.git -q && python3 -c '{clip_cmd}'",
+            f"pip install git+https://github.com/openai/CLIP.git -q && {sys.executable} -c '{clip_cmd}'",
             timeout=180
         )
         
@@ -457,7 +457,7 @@ except Exception as e:
 """
             
             returncode, stdout, stderr = self.run_command(
-                f"CUDA_VISIBLE_DEVICES='' python3 -c '{clip_test_cmd}'",
+                f"CUDA_VISIBLE_DEVICES='' {sys.executable} -c '{clip_test_cmd}'",
                 timeout=120
             )
             
@@ -493,7 +493,7 @@ except Exception as e:
 """
         
         returncode, stdout, stderr = self.run_command(
-            f"pip install diffusers -q && python3 -c '{diffusers_check}'",
+            f"pip install diffusers -q && {sys.executable} -c '{diffusers_check}'",
             timeout=120
         )
         
@@ -522,7 +522,7 @@ except Exception as e:
 """
             
             returncode, stdout, stderr = self.run_command(
-                f"CUDA_VISIBLE_DEVICES='' python3 -c '{pipeline_cmd}'",
+                f"CUDA_VISIBLE_DEVICES='' {sys.executable} -c '{pipeline_cmd}'",
                 timeout=60
             )
             
@@ -554,7 +554,7 @@ except Exception as e:
 """
         
         returncode, stdout, stderr = self.run_command(
-            f"pip install cogvideox -q 2>/dev/null; python3 -c '{cogvideo_cmd}'",
+            f"pip install cogvideox -q 2>/dev/null; {sys.executable} -c '{cogvideo_cmd}'",
             timeout=120
         )
         
@@ -587,7 +587,7 @@ except Exception as e:
 """
         
         returncode, stdout, stderr = self.run_command(
-            f"python3 -c '{llama_check}'",
+            f"{sys.executable} -c '{llama_check}'",
             timeout=10
         )
         
@@ -710,7 +710,7 @@ except Exception as e:
         
         if REQUESTS_AVAILABLE:
             try:
-                response = requests.get("http://localhost:8888/models", timeout=5)
+                response = requests.get("http://localhost:8888/api/v1/models", timeout=5)
                 if response.status_code == 200:
                     models = response.json()
                     self.record_result("Lemonade SDK (API)", "working", f"API responding: {response.status_code}")
@@ -788,7 +788,7 @@ except Exception as e:
 """
         
         returncode, stdout, stderr = self.run_command(
-            f"python3 -c '{import_cmd}'",
+            f"{sys.executable} -c '{import_cmd}'",
             timeout=30
         )
         
@@ -815,7 +815,7 @@ except Exception as e:
 """
             
             returncode, stdout, stderr = self.run_command(
-                f"python3 -c '{status_cmd}'",
+                f"{sys.executable} -c '{status_cmd}'",
                 timeout=30
             )
             
