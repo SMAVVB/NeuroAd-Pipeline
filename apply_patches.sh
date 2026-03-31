@@ -204,6 +204,44 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+# Patch 6: dataloader.py — sequentielles unload nach prepare_extractors()
+# ---------------------------------------------------------------------------
+echo ""
+echo "── dataloader.py ─────────────────────────────"
+DATALOADER_FILE="$NEURALSET_DIR/dataloader.py"
+
+apply_patch "$DATALOADER_FILE" \
+    "prepare_extractors sequential unload after prepare()" \
+    '        for extractor in other_extractors:
+            logger.info(f"Preparing extractor: {extractor.__class__.__name__}")
+            extractor.prepare(events)' \
+    '        for extractor in other_extractors:
+            logger.info(f"Preparing extractor: {extractor.__class__.__name__}")
+            extractor.prepare(events)
+            # patched: unload model weights immediately after caching features
+            import gc, torch as _torch
+            for _attr in ("_model", "_feature_extractor", "_tokenizer"):
+                _obj = getattr(extractor, _attr, None)
+                if _obj is not None and hasattr(_obj, "cpu"):
+                    try: _obj.cpu()
+                    except Exception: pass
+                try: object.__setattr__(extractor, _attr, None)
+                except Exception: pass
+            if hasattr(extractor, "image"):
+                _img = extractor.image
+                for _attr in ("_model", "_feature_extractor"):
+                    _obj = getattr(_img, _attr, None)
+                    if _obj is not None and hasattr(_obj, "cpu"):
+                        try: _obj.cpu()
+                        except Exception: pass
+                    try: object.__setattr__(_img, _attr, None)
+                    except Exception: pass
+            if _torch.cuda.is_available():
+                _torch.cuda.empty_cache()
+            gc.collect()
+            logger.info(f"Unloaded extractor: {extractor.__class__.__name__}")'
+
+# ---------------------------------------------------------------------------
 # Summary
 # ---------------------------------------------------------------------------
 echo ""
