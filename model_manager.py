@@ -406,6 +406,21 @@ class SequentialTribeScorer:
             events_df = model.get_events_dataframe(**kwargs)
             logger.info(f"Events DataFrame shape: {events_df.shape}")
 
+            # Move FmriEncoderModel (_model) to target device before predict().
+            # predict() does batch.to(model.device) — so _model.device must match.
+            # After unload_extractor() calls, _model stays on CPU by default.
+            inner_model = getattr(model, "_model", None)
+            if inner_model is not None and hasattr(inner_model, "parameters"):
+                current_device = next(inner_model.parameters()).device
+                if str(current_device) != self.device:
+                    logger.info(
+                        f"Moving FmriEncoderModel from {current_device} to {self.device}"
+                    )
+                    inner_model.to(self.device)
+                    log_memory("after _model to device")
+                else:
+                    logger.info(f"FmriEncoderModel already on {current_device}")
+
             # Run prediction — returns (preds: np.ndarray, subject_ids: list)
             preds, subject_ids = model.predict(events_df)
 
