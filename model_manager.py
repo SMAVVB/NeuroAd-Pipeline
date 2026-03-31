@@ -127,41 +127,41 @@ def unload_extractor(extractor: Any, name: str = "") -> None:
 # Sequential extractor runner
 # ---------------------------------------------------------------------------
 
-def _get_tribe_extractors(tribe_experiment) -> dict[str, Any]:
+def _get_tribe_extractors(tribe_model) -> dict[str, Any]:
     """
-    Extract the individual neuralset extractors from a TribeExperiment.
-    Returns a dict: {'video': ..., 'audio': ..., 'text': ...}
+    Extract the individual neuralset extractors from a TribeModel.
+    Returns a dict: {'video': ..., 'audio': ..., 'text': ..., 'image': ...}
 
-    TribeExperiment holds extractors under .extractors (a dict or list).
-    We probe the structure defensively.
+    Real structure (confirmed via introspection on The Beast):
+        model.data.video_feature   → HuggingFaceVideo (V-JEPA2, ~20 GB)
+        model.data.audio_feature   → Wav2VecBert (~2 GB)
+        model.data.text_feature    → HuggingFaceText (LLaMA, ~6 GB)
+        model.data.image_feature   → HuggingFaceVideo (image encoder)
     """
     extractors = {}
 
-    # TribeExperiment.extractors is typically a dict[str, BaseExtractor]
-    raw = getattr(tribe_experiment, "extractors", None)
-    if isinstance(raw, dict):
-        for k, v in raw.items():
-            key = k.lower()
-            if any(x in key for x in ("video", "vjepa", "huggingfacevideo")):
-                extractors["video"] = v
-            elif any(x in key for x in ("audio", "wav", "wav2vec")):
-                extractors["audio"] = v
-            elif any(x in key for x in ("text", "llama", "language")):
-                extractors["text"] = v
-    elif isinstance(raw, (list, tuple)):
-        for v in raw:
-            t = type(v).__name__.lower()
-            if "video" in t or "vjepa" in t:
-                extractors["video"] = v
-            elif "audio" in t or "wav" in t:
-                extractors["audio"] = v
-            elif "text" in t or "llama" in t:
-                extractors["text"] = v
+    data = getattr(tribe_model, "data", None)
+    if data is None:
+        logger.warning("TribeModel has no .data attribute — cannot find extractors.")
+        return extractors
+
+    # Direct attribute lookup — these names are confirmed from introspection
+    mapping = {
+        "video":  getattr(data, "video_feature", None),
+        "audio":  getattr(data, "audio_feature", None),
+        "text":   getattr(data, "text_feature",  None),
+        "image":  getattr(data, "image_feature", None),
+    }
+
+    for key, extractor in mapping.items():
+        if extractor is not None:
+            extractors[key] = extractor
+            logger.debug(f"Found extractor: {key} → {type(extractor).__name__}")
 
     if not extractors:
         logger.warning(
-            "Could not identify individual extractors from TribeExperiment. "
-            "Falling back to full model load (memory risk)."
+            "Could not identify extractors in model.data — "
+            "falling back to full model load (memory risk)."
         )
 
     return extractors
@@ -311,18 +311,8 @@ class SequentialTribeScorer:
             logger.info(f"[DRY RUN] Skipping inference for {asset_path_obj.name}")
             return np.zeros((10, 20484), dtype=np.float32)
 
-        # Try to identify TribeExperiment inside TribeModel
-        tribe_exp = getattr(model, "experiment", None) or getattr(model, "_experiment", None)
-
-        if tribe_exp is None:
-            # Fallback: use standard prediction (no sequential control)
-            logger.warning(
-                "Could not find TribeExperiment — using standard predict_* (no sequential unloading). "
-                "Memory peaks may occur."
-            )
-            return self._fallback_predict(model, asset_path, asset_type)
-
-        extractors = _get_tribe_extractors(tribe_exp)
+        # Extractors live in model.data (confirmed via introspection)
+        extractors = _get_tribe_extractors(model)
 
         if not extractors:
             logger.warning("Could not identify extractors — using fallback predict.")
@@ -388,21 +378,36 @@ class SequentialTribeScorer:
         asset_path: str,
         asset_type: str,
     ) -> "np.ndarray | None":
-        """Standard TribeModel prediction — used as fallback and for final step."""
+        """
+        Standard TribeModel prediction via get_events_dataframe() + predict().
+
+        Real API (confirmed via introspection):
+            model.get_events_dataframe(video_path=...) → pd.DataFrame
+            model.predict(events: pd.DataFrame) → (np.ndarray, list)
+        """
         import numpy as np
 
         asset_path_obj = Path(asset_path)
-        logger.info(f"Running TribeModel.predict_{asset_type}({asset_path_obj.name})")
+        logger.info(f"Running TribeModel.predict({asset_path_obj.name}) via get_events_dataframe")
 
         try:
+            # Build events DataFrame for the asset
+            kwargs: dict[str, Any] = {}
             if asset_type == "video":
-                preds = model.predict_video(str(asset_path_obj))
+                kwargs["video_path"] = str(asset_path_obj)
             elif asset_type == "audio":
-                preds = model.predict_audio(str(asset_path_obj))
+                kwargs["audio_path"] = str(asset_path_obj)
             elif asset_type == "image":
-                preds = model.predict_image(str(asset_path_obj))
+                kwargs["image_path"] = str(asset_path_obj)
             else:
                 raise ValueError(f"Unknown asset_type: {asset_type}")
+
+            logger.info(f"Building events DataFrame with kwargs: {list(kwargs.keys())}")
+            events_df = model.get_events_dataframe(**kwargs)
+            logger.info(f"Events DataFrame shape: {events_df.shape}")
+
+            # Run prediction — returns (preds: np.ndarray, subject_ids: list)
+            preds, subject_ids = model.predict(events_df)
 
             if isinstance(preds, torch.Tensor):
                 preds = preds.cpu().numpy()
@@ -411,7 +416,7 @@ class SequentialTribeScorer:
             return preds
 
         except Exception as e:
-            logger.error(f"predict_{asset_type} failed: {e}")
+            logger.error(f"predict failed: {e}")
             raise
 
     def score_asset(
