@@ -282,6 +282,20 @@ class SequentialTribeScorer:
         )
 
         log_memory("after TribeModel load")
+
+        # Reduce V-JEPA2 memory footprint:
+        # num_frames 64 (default fpc64) -> 16 reduces per-clip activations ~4x
+        # max_imsize 256 caps frame resolution before encoding
+        try:
+            vf = model.data.video_feature
+            orig_frames = vf.num_frames
+            orig_imsize = getattr(vf, "max_imsize", None)
+            object.__setattr__(vf, "num_frames", 16)
+            object.__setattr__(vf, "max_imsize", 256)
+            logger.info(f"V-JEPA2 patched: num_frames {orig_frames}->16, max_imsize {orig_imsize}->256")
+        except Exception as e:
+            logger.warning(f"Could not patch V-JEPA2 config: {e}")
+
         self._tribe_model = model
         return model
 
