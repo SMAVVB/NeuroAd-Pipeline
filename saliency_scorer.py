@@ -173,17 +173,12 @@ def load_vinet_s(checkpoint_path: Path, device: str = "cuda") -> Any:
     if tools_vinet not in sys.path:
         sys.path.insert(0, tools_vinet)
 
-    from ViNet_S_model import ViNetS  # type: ignore
+    from ViNet_S_model import VideoSaliencyModel  # type: ignore
 
-    model = ViNetS(
-        grouped_conv=True,
-        root_grouping=True,
-        depth_grouping=False,
-        decoder_groups=32,
+    model = VideoSaliencyModel(
         num_hier=3,
-        use_skip=1,
-        use_trilinear_upsampling=False,
-        use_channel_shuffle=True,
+        use_upsample=True,
+        num_clips=32,
     )
 
     state = torch.load(checkpoint_path, map_location="cpu")
