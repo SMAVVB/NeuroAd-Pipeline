@@ -21,7 +21,7 @@ sleep 2
 
 # Start Vite dev server
 echo "Starting frontend on port 3001..."
-cd frontend && npm run dev &
+cd ~/neuro_pipeline_project/dashboard_v2/frontend && npm run dev &
 FRONTEND_PID=$!
 cd ..
 
