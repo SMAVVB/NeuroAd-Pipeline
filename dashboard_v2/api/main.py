@@ -407,18 +407,36 @@ async def get_mirofish_status():
 
 @app.post("/api/report/generate")
 async def generate_report(request: ReportRequest):
-    """Generate AI report using Lemonade SDK."""
+    """Generate AI report using Lemonade SDK (OpenAI-compatible API)."""
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        # Build prompt with campaign scores
+        scores_json = json.dumps(request.scores, indent=2)
+        prompt = f"""Create a comprehensive campaign analysis report for: {request.campaign}
+
+Campaign Scores (JSON):
+{scores_json}
+
+Please analyze these scores and generate a detailed report with:
+1. Key findings from neural engagement, brand match, and emotion data
+2. Specific optimization recommendations
+3. Actionable insights for marketing decisions
+
+Format the report in markdown with clear sections and bullet points."""
+        
+        async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(
-                "http://localhost:8888/generate",
+                "http://localhost:8888/v1/chat/completions",
                 json={
-                    "campaign": request.campaign,
-                    "scores": request.scores
+                    "model": "default",
+                    "messages": [{"role": "user", "content": prompt}],
+                    "max_tokens": 2000,
+                    "temperature": 0.3
                 }
             )
             if response.status_code == 200:
-                return {"report": response.text, "status": "success"}
+                result = response.json()
+                content = result["choices"][0]["message"]["content"]
+                return {"report": content, "status": "success"}
     except Exception as e:
         print(f"Lemonade API error: {e}")
     
@@ -436,28 +454,45 @@ async def generate_report_get(
 ):
     """Generate AI report using Lemonade SDK (GET version for streaming)."""
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        # Build prompt based on focus
+        focus_prompts = {
+            "full": "Create a comprehensive campaign analysis report.",
+            "optimization": "Fokussiere ausschließlich auf Verbesserungspotenziale. Für jedes Creative: was sind die 2-3 konkreten Optimierungen die den Score am stärksten verbessern würden?",
+            "executive": "Erstelle eine Executive Summary in maximal 300 Wörtern. Nur die 3 wichtigsten Erkenntnisse und 2 konkrete Handlungsempfehlungen. Format: Bullet Points. Kein Fachjargon."
+        }
+        
+        prompt = f"""{focus_prompts.get(focus, focus_prompts['full'])}
+
+Campaign: {campaign}
+
+Please analyze the campaign scores and generate a report in German with clear sections."""
+        
+        async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.get(
-                "http://localhost:8888/generate",
+                "http://localhost:8888/v1/chat/completions",
                 params={
-                    "campaign": campaign,
-                    "focus": focus
+                    "model": "default",
+                    "messages": [{"role": "user", "content": prompt}],
+                    "max_tokens": 2000,
+                    "temperature": 0.3
                 }
             )
             if response.status_code == 200:
-                return {"report": response.text, "status": "success"}
+                result = response.json()
+                content = result["choices"][0]["message"]["content"]
+                return {"report": content, "status": "success"}
     except Exception as e:
         print(f"Lemonade API error: {e}")
     
     # Fallback report
     focus_text = {
-        "full": "Full Analysis",
-        "optimization": "Optimization Recommendations",
+        "full": "Vollständige Analyse",
+        "optimization": "Optimierungsempfehlungen",
         "executive": "Executive Summary"
-    }.get(focus, "Full Analysis")
+    }.get(focus, "Vollständige Analyse")
     
     return {
-        "report": f"# {focus_text}\n\n## {campaign}\n\nThis report was generated automatically based on the campaign scores.\n\n### Key Findings:\n\n1. **Neural Engagement**: High engagement scores indicate strong visual attention patterns.\n2. **Brand Match**: CLIP scores show semantic alignment with brand positioning.\n3. **Emotional Impact**: Emotion recognition reveals audience sentiment patterns.\n\n### Recommendations:\n\n1. Focus on frames with highest neural engagement for key messaging.\n2. Optimize visual saliency to guide attention to product features.\n3. Use emotion data to refine tone and messaging.\n\n---\n*Powered by Lemonade SDK · localhost:8888*",
+        "report": f"# {focus_text}\n\n## {campaign}\n\nDieser Report wurde automatisch basierend auf den Kampagnen-Scores generiert.\n\n### Wichtige Erkenntnisse:\n\n1. **Neural Engagement**: Hohe Engagement-Werte zeigen starke visuelle Aufmerksamkeitsmuster.\n2. **Brand Match**: CLIP-Werte zeigen semantische Übereinstimmung mit der Markenpositionierung.\n3. **Emotional Impact**: Emotionserkennung zeigt Muster der Publikumsstimmung.\n\n### Empfehlungen:\n\n1. Fokussiere auf Frames mit höchstem Neural Engagement für Key-Messages.\n2. Optimiere visuelle Salienz zur Führung der Aufmerksamkeit auf Produktmerkmale.\n3. Nutze Emotion-Daten zur Feinabstimmung von Ton und Botschaft.\n\n---\n*Powered by Lemonade SDK · localhost:8888*",
         "status": "success"
     }
 
@@ -465,21 +500,20 @@ async def generate_report_get(
 # ============================================================================
 # Static Files
 # ============================================================================
-# Mount static files for campaign assets
-@app.on_event("startup")
-async def startup_event():
-    """Mount static files on startup."""
-    if CAMPAIGNS_DIR.exists():
-        # Create a route for each campaign
-        for campaign_dir in CAMPAIGNS_DIR.iterdir():
-            if campaign_dir.is_dir():
-                scores_dir = campaign_dir / "scores"
-                if scores_dir.exists():
+# Mount static files for campaign assets (MUST be before uvicorn.run())
+if CAMPAIGNS_DIR.exists():
+    for campaign_dir in CAMPAIGNS_DIR.iterdir():
+        if campaign_dir.is_dir():
+            scores_dir = campaign_dir / "scores"
+            if scores_dir.exists():
+                try:
                     app.mount(
                         f"/static/{campaign_dir.name}",
                         StaticFiles(directory=str(scores_dir)),
                         name=f"static_{campaign_dir.name}"
                     )
+                except Exception:
+                    pass
 
 
 # ============================================================================

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom'
 import SaliencyPage from './pages/SaliencyPage.jsx'
 import TribePage from './pages/TribePage.jsx'
 import ClipPage from './pages/ClipPage.jsx'
@@ -167,6 +167,10 @@ function App() {
         <div className="flex-1 overflow-y-auto bg-primary">
           <div className="p-8 max-w-7xl mx-auto">
             <Routes>
+              <Route
+                path="/"
+                element={<Navigate to="/tribe" replace />}
+              />
               <Route
                 path="/saliency"
                 element={<SaliencyPage campaign={selectedCampaign} asset={selectedAsset} />}

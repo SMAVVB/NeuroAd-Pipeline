@@ -63,7 +63,26 @@ function TribePage({ campaign, asset }) {
   }
 
   const { brain, scores } = tribeData
-  const tribeScores = scores?.tribe || {}
+  // Scores come from DB as flat object, not nested with .tribe
+  const tribeScores = {
+    neural_engagement: scores?.neural_engagement,
+    emotional_impact: scores?.emotional_impact,
+    face_response: scores?.face_response,
+    scene_response: scores?.scene_response,
+    motion_response: scores?.motion_response,
+    language_engagement: scores?.language_engagement,
+    temporal_peak: scores?.temporal_peak,
+  }
+  
+  // Map to BrainViewer3D expected keys (TPJ, FFA, PPA, V5, Broca, A1)
+  const brainScores = {
+    TPJ: scores?.emotional_impact || 0,
+    FFA: scores?.face_response || 0,
+    PPA: scores?.scene_response || 0,
+    V5: scores?.motion_response || 0,
+    Broca: scores?.language_engagement || 0,
+    A1: scores?.neural_engagement || 0,
+  }
 
   return (
     <div className="space-y-6">
@@ -87,7 +106,7 @@ function TribePage({ campaign, asset }) {
       {/* 3D Brain Viewer */}
       <div className="card">
         <h3 className="text-lg font-semibold mb-4">TRIBE 3D Brain Map</h3>
-        <BrainViewer3D scores={tribeScores} />
+        <BrainViewer3D scores={brainScores} />
       </div>
 
       {/* Score Cards */}

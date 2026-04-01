@@ -19,11 +19,13 @@ function BrainViewer3D({ scores = {} }) {
     const scene = new THREE.Scene()
     scene.background = null
 
-    const camera = new THREE.PerspectiveCamera(75, container.clientWidth / 400, 0.1, 1000)
+    const width = container.clientWidth || 600
+    const height = 400
+    const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000)
     camera.position.set(0, 0, 3)
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
-    renderer.setSize(container.clientWidth, 400)
+    renderer.setSize(width, height)
     renderer.setPixelRatio(window.devicePixelRatio)
     container.appendChild(renderer.domElement)
 
@@ -94,6 +96,9 @@ function BrainViewer3D({ scores = {} }) {
 
       // Auto-rotate brain
       brainSphere.rotation.y += 0.002
+      
+      // Rotate hotspotGroup together with brainSphere
+      hotspotGroup.rotation.y = brainSphere.rotation.y
 
       // Pulse hotspots
       hotspots.forEach((hotspot, index) => {

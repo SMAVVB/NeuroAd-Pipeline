@@ -53,7 +53,7 @@ function MiroFishPage({ campaign, asset }) {
     svg.selectAll('*').remove()
 
     const container = svgRef.current.parentElement
-    const width = container.clientWidth
+    const width = container?.clientWidth || 800
     const height = 400
 
     // Demo data if no real data
@@ -198,7 +198,7 @@ function MiroFishPage({ campaign, asset }) {
             <span className="badge badge-neutral">Demo — keine echten Simulationsdaten</span>
           </div>
         )}
-        <div ref={svgRef} style={{ width: '100%', height: 400, background: 'var(--bg-subtle)', borderRadius: 8 }} />
+        <svg ref={svgRef} style={{ width: '100%', height: 400, background: 'var(--bg-subtle)', borderRadius: 8 }} />
       </div>
 
       {/* Sentiment Overview Cards */}
