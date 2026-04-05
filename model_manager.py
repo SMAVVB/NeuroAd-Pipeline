@@ -305,86 +305,59 @@ class SequentialTribeScorer:
         asset_type: str,
     ) -> "np.ndarray | None":
         """
-        Core sequential inference logic.
-
-        Runs TRIBE v2 by manually controlling extractor lifecycle:
-        1. Load text extractor → extract → unload
-        2. Load audio extractor → extract → unload
-        3. Load video extractor → extract → unload
-        4. Run TRIBE transformer → return predictions
-
-        Falls back to standard TribeModel.predict_* if extractor
-        introspection fails (non-breaking).
+        Run TRIBE v2 inference.
+        Simple direct implementation: get_events_dataframe() -> _model.to(cuda) -> predict()
+        This matches the working debug script exactly.
         """
         import numpy as np
 
         model = self._load_tribe_model()
-        asset_path_obj = Path(asset_path)
 
         if self.dry_run:
-            logger.info(f"[DRY RUN] Skipping inference for {asset_path_obj.name}")
+            logger.info(f"[DRY RUN] Skipping inference for {Path(asset_path).name}")
             return np.zeros((10, 20484), dtype=np.float32)
 
-        # Extractors live in model.data (confirmed via introspection)
-        extractors = _get_tribe_extractors(model)
-
-        if not extractors:
-            logger.warning("Could not identify extractors — using fallback predict.")
-            return self._fallback_predict(model, asset_path, asset_type)
-
-        # Sequential extractor execution
-        logger.info(f"Starting sequential inference for: {asset_path_obj.name}")
-        cached_features: dict[str, Any] = {}
-
-        phase_order = ["text", "audio", "video"]
-        for phase in phase_order:
-            ext = extractors.get(phase)
-            if ext is None:
-                logger.debug(f"No {phase} extractor found, skipping phase.")
-                continue
-
-            logger.info(f"─── Phase: {phase.upper()} ───")
-            log_memory(f"before {phase}")
-            t0 = time.time()
-
-            try:
-                # Force extractor to use our device
-                if hasattr(ext, "device"):
-                    try:
-                        object.__setattr__(ext, "device", self.device)
-                    except Exception:
-                        pass
-
-                # Trigger inference by accessing the model property
-                # (neuralset uses lazy loading via @property)
-                _ = ext.model  # ensure model is loaded
-                log_memory(f"after {phase} load")
-
-                # Store that this phase ran (features go into TRIBE's cache)
-                cached_features[phase] = True
-
-            except Exception as e:
-                logger.error(f"Phase {phase} failed: {e}")
-                cached_features[phase] = False
-            finally:
-                # Always unload, even on error
-                unload_extractor(ext, name=phase)
-                elapsed = time.time() - t0
-                logger.info(f"Phase {phase} done in {elapsed:.1f}s")
-                log_memory(f"after {phase} unload")
-
-        # Now run the full prediction (extractors will re-load from cache if available,
-        # or re-run if not — but never simultaneously)
-        logger.info("─── Phase: TRIBE TRANSFORMER ───")
-        log_memory("before transformer")
-
         try:
-            preds = self._fallback_predict(model, asset_path, asset_type)
-            log_memory("after transformer")
+            # Step 1: Build events DataFrame (loads all extractors internally)
+            kwargs = {}
+            if asset_type == "video":
+                kwargs["video_path"] = str(asset_path)
+            elif asset_type == "audio":
+                kwargs["audio_path"] = str(asset_path)
+            elif asset_type == "image":
+                kwargs["image_path"] = str(asset_path)
+
+            logger.info(f"Building events DataFrame for: {Path(asset_path).name}")
+            log_memory("before get_events_dataframe")
+            events_df = model.get_events_dataframe(**kwargs)
+            logger.info(f"Events DataFrame shape: {events_df.shape}")
+            log_memory("after get_events_dataframe")
+
+            # Step 2: Move _model to target device AFTER get_events_dataframe
+            # (get_events_dataframe re-initialises _model on CPU internally)
+            inner_model = getattr(model, "_model", None)
+            if inner_model is not None:
+                inner_model.to(self.device)
+                logger.info(f"FmriEncoderModel -> {self.device}")
+                log_memory("after _model to device")
+
+            # Step 3: Run prediction
+            logger.info("Running predict()...")
+            preds, _ = model.predict(events_df)
+
+            if hasattr(preds, 'cpu'):
+                preds = preds.cpu().numpy()
+
+            logger.info(f"Prediction shape: {preds.shape}")
+            log_memory("after predict")
             return preds
+
         except Exception as e:
-            logger.error(f"TRIBE transformer inference failed: {e}")
+            logger.error(f"Inference failed: {e}")
+            import traceback
+            traceback.print_exc()
             return None
+
 
     def _fallback_predict(
         self,
@@ -434,6 +407,13 @@ class SequentialTribeScorer:
                     log_memory("after _model to device")
                 else:
                     logger.info(f"FmriEncoderModel already on {current_device}")
+
+            # get_events_dataframe() may re-create _model on CPU internally.
+            # Re-fetch and move to device immediately before predict().
+            inner_model = getattr(model, "_model", None)
+            if inner_model is not None:
+                inner_model.to(self.device)
+                logger.info(f"FmriEncoderModel -> {self.device} (pre-predict)")
 
             # Run prediction — returns (preds: np.ndarray, subject_ids: list)
             preds, subject_ids = model.predict(events_df)

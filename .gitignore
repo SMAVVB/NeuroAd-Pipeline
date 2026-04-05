@@ -1,3 +1,19 @@
+# Dein spezielles ROCm Environment (DER BLOCKER!)
+venv_rocm/
+
+# Große Model-Gewichte & Daten
+*.gguf
+*.npy
+*.pt
+*.bin
+tools/**/weights/
+tools/**/final_models/
+
+# Kampagnen-Daten & Videos
+campaigns/
+outputs/
+backend/uploads/
+
 # Virtual Environment
 venv/
 env/
@@ -60,3 +76,7 @@ htmlcov/
 *.tmp
 *.temp
 .cache/
+
+# Test files
+test_mirofish.py
+test_creative.txt

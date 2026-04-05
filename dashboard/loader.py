@@ -9,7 +9,7 @@ import os
 from pathlib import Path
 from typing import Optional
 
-from .db import upsert_asset, get_all_campaigns
+from db import upsert_asset, get_all_campaigns
 
 PROJECT_ROOT = Path.home() / "neuro_pipeline_project"
 CAMPAIGNS_DIR = PROJECT_ROOT / "campaigns"
@@ -310,7 +310,7 @@ def refresh_campaign(campaign: str) -> int:
     Returns:
         Number of assets loaded
     """
-    from .db import delete_campaign
+    from db import delete_campaign
     
     delete_campaign(campaign)
     return load_campaign(campaign)

@@ -69,6 +69,13 @@ def upsert_asset(campaign: str, data: dict) -> None:
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
+    # Check if record exists
+    cursor.execute(
+        "SELECT id FROM scores WHERE campaign = ? AND asset_name = ?",
+        (campaign, data.get("asset_name"))
+    )
+    existing = cursor.fetchone()
+    
     # Prepare columns and values
     columns = ["campaign", "asset_name", "asset_path"]
     values = [campaign, data.get("asset_name"), data.get("asset_path")]
@@ -112,18 +119,21 @@ def upsert_asset(campaign: str, data: dict) -> None:
     columns.append("has_tribe_preds")
     values.append(1 if data.get("has_tribe_preds", False) else 0)
     
-    # Build INSERT statement with ON CONFLICT
+    # Build column list and placeholders
+    column_list = ", ".join(columns)
     placeholders = ", ".join(["?" for _ in columns])
-    update_clause = ", ".join([f"{col}=EXCLUDED.{col}" for col in columns[2:]])  # Skip id, campaign, asset_name
     
-    sql = f"""
-        INSERT INTO scores ({', '.join(columns)})
-        VALUES ({placeholders})
-        ON CONFLICT(campaign, asset_name) DO UPDATE SET
-        {update_clause}
-    """
+    if existing:
+        # UPDATE existing record
+        set_clause = ", ".join([f"{col} = ?" for col in columns[2:]])  # Skip id, campaign, asset_name
+        values.extend(values[2:])  # Add values for SET clause (skip campaign, asset_name)
+        sql = f"UPDATE scores SET {set_clause} WHERE campaign = ? AND asset_name = ?"
+        cursor.execute(sql, values)
+    else:
+        # INSERT new record
+        sql = f"INSERT INTO scores ({column_list}) VALUES ({placeholders})"
+        cursor.execute(sql, values)
     
-    cursor.execute(sql, values)
     conn.commit()
     conn.close()
 

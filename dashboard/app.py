@@ -12,10 +12,12 @@ import numpy as np
 from pathlib import Path
 from datetime import datetime
 
-# Import local modules
-from . import db
-from . import loader
-from . import brain_viz
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent))
+import db
+import loader
+import brain_viz
 
 # ============================================================================
 # Streamlit Configuration
@@ -232,6 +234,7 @@ st.sidebar.markdown("### 🧠 NeuroAd")
 st.sidebar.markdown("##### Intelligence Platform")
 
 # Campaign selector
+db.init_db()
 all_campaigns = db.get_all_campaigns()
 
 if not st.session_state.db_initialized and all_campaigns:
@@ -386,7 +389,7 @@ with tab1:
             'Neural Engagement': '{:.3f}',
             'Emotional Impact': '{:.3f}',
         })
-        .applymap(
+        .map(
             lambda x: f'background-color: #1a2035; color: #00d4ff' if isinstance(x, str) and x.startswith('grade-') else '',
             subset=['Grade']
         ),
@@ -589,7 +592,7 @@ with tab2:
                 return 'background-color: #3b82f6; color: white'
         
         st.dataframe(
-            roi_df.style.applymap(color_rois, subset=['Score']),
+            roi_df.style.map(color_rois, subset=['Score']),
             use_container_width=True,
             hide_index=True
         )
@@ -733,6 +736,9 @@ with tab3:
     if not selected_asset_saliency:
         st.stop()
     
+    # Get selected asset data for Tab 3
+    asset_data_tab3 = next((s for s in scores if s.get('asset_name') == selected_asset_saliency), {})
+    
     # Get campaign path
     campaign_path = Path.home() / "neuro_pipeline_project" / "campaigns" / selected_campaign
     scores_path = campaign_path / "scores"
@@ -764,12 +770,12 @@ with tab3:
     col_s1, col_s2 = st.columns(2)
     
     with col_s1:
-        center_bias = asset_data.get('center_bias')
+        center_bias = asset_data_tab3.get('center_bias')
         if center_bias is not None:
             st.metric("Center Bias", f"{center_bias:.3f}")
     
     with col_s2:
-        saliency_score = asset_data.get('saliency_score')
+        saliency_score = asset_data_tab3.get('saliency_score')
         if saliency_score is not None:
             st.metric("Saliency Score", f"{saliency_score:.3f}")
 

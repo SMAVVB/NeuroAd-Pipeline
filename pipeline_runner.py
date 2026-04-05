@@ -23,11 +23,73 @@ import argparse
 import gc
 import json
 import logging
+import os
+import subprocess
 import time
+import requests
 from pathlib import Path
 from typing import Any
 
+# ---------------------------------------------------------------------------
+# MiroFish API configuration
+# ---------------------------------------------------------------------------
+
+from mirofish_client import MiroFishClient
+
+MAX_POLL_RETRIES = 30
+POLL_INTERVAL = 5  # seconds
+
 import torch
+
+# ---------------------------------------------------------------------------
+# LLM Cache Flush Configuration
+# ---------------------------------------------------------------------------
+
+def restart_lemonade_server():
+    """
+    Hard reset the Lemonade server to clear VRAM.
+    
+    1. Kills the running server on port 8888 (aggressive double-check)
+    2. Waits 10 seconds for VRAM to be physically cleared (AMD driver requirement)
+    3. Starts the server with subprocess.Popen (ctx-size reduced to 128k)
+    4. Waits 25 seconds for the server to be API-ready
+    """
+    import subprocess
+    
+    logger.info("Performing hard reset on Lemonade server to clear VRAM...")
+    
+    # 1. Aggressive double-check kill to ensure VRAM is freed
+    logger.info("  [LEMONADE] Killing existing server on port 8888...")
+    os.system("killall -9 lemonade-server > /dev/null 2>&1 || true")
+    os.system("fuser -k -9 8888/tcp > /dev/null 2>&1 || true")
+    os.system("killall -9 llama-server > /dev/null 2>&1 || true")
+    os.system("fuser -k -9 /dev/kfd > /dev/null 2>&1 || true")  # Das ist der ultimative AMD ROCm Nuke
+    
+    # 2. Wait for VRAM to be physically cleared (AMD driver requirement)
+    logger.info("[LEMONADE] Waiting 45s for Linux kernel to completely flush UMA memory...")
+    time.sleep(45)
+    
+    # 3. Start the server in background (reduced ctx-size for OOM protection)
+    logger.info("  [LEMONADE] Starting server in background...")
+    subprocess.Popen(
+        [
+            "lemonade-server", "serve",
+            "--host", "0.0.0.0",
+            "--port", "8888",
+            "--extra-models-dir", "/home/vincent/jarvis_os/models",
+            "--ctx-size", "32768"
+        ],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True
+    )
+    
+    # 4. Wait for server to be API-ready
+    logger.info("[LEMONADE] Waiting 45s for server to allocate VRAM and index models...")
+    time.sleep(45)
+    
+    logger.info("  [LEMONADE] Server restart complete")
+
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
@@ -55,7 +117,7 @@ DEFAULT_CONFIG = {
         "saliency": {"enabled": True},
         "clip":     {"enabled": True},
         "emotion":  {"enabled": True},
-        "mirofish": {"enabled": False},  # Manual for now — enable when API ready
+        "mirofish": {"enabled": True},  # API is now ready
     },
 
     # TRIBE v2
@@ -355,34 +417,56 @@ def run_emotion(asset_path: Path, config: dict, scores_dir: Path) -> dict:
     return result
 
 
+
+
 def run_mirofish(assets: list[Path], config: dict, campaign_dir: Path,
                  brand_context: str = "") -> dict:
     """
-    MiroFish social simulation — placeholder for API integration.
+    MiroFish social simulation — runs via local MiroFish API.
 
-    Currently returns neutral scores. Replace with API calls when ready.
-    See: POST http://localhost:5001/api/simulation/create
+    Args:
+        assets: List of asset paths (not used directly, context comes from brand_context)
+        config: Pipeline configuration
+        campaign_dir: Directory of the campaign
+        brand_context: Context string describing the brand/campaign for the simulation
+
+    Returns:
+        Dictionary with dummy sentiment values (placeholder until API report is parsed)
     """
-    logger.info("  [MIROFISH] API integration pending — returning neutral scores")
-    logger.info("  [MIROFISH] Run simulation manually at http://localhost:3000")
-    logger.info("  [MIROFISH] Then place report JSON in campaigns/.../mirofish/")
+    logger.info("  [MIROFISH] Running simulation via MiroFish API...")
 
-    # Check if a manual report exists
-    mirofish_dir = campaign_dir / "mirofish"
-    if mirofish_dir.exists():
-        reports = list(mirofish_dir.glob("*.json"))
-        if reports:
-            logger.info(f"  [MIROFISH] Found manual report: {reports[0].name}")
-            return json.loads(reports[0].read_text())
+    try:
+        # Initialize the MiroFish client
+        client = MiroFishClient(base_url="http://localhost:5001/api")
 
-    return {
-        "positive_sentiment": 0.5,
-        "negative_sentiment": 0.5,
-        "virality_score":     0.5,
-        "controversy_risk":   0.5,
-        "source":             "placeholder",
-        "note":               "Run MiroFish simulation manually, place report in mirofish/ folder",
-    }
+        # Use the first asset name as campaign name, or default
+        campaign_name = assets[0].stem if assets else "campaign"
+
+        # Run the simulation
+        result = client.run_simulation(
+            campaign_name=campaign_name,
+            context=brand_context
+        )
+
+        logger.info("  [MIROFISH] Simulation completed successfully")
+
+        # Log raw API response for debugging
+        logger.info(f"Raw API Report Data: {result}")
+
+        # Return the actual API response data
+        return result
+
+    except Exception as e:
+        logger.error(f"  [MIROFISH] Simulation failed: {e}")
+        # Return neutral scores on failure
+        return {
+            "positive_sentiment": 0.5,
+            "negative_sentiment": 0.5,
+            "virality_score":     0.5,
+            "controversy_risk":   0.5,
+            "source":             "error",
+            "note":               f"Simulation failed: {str(e)}",
+        }
 
 
 # ---------------------------------------------------------------------------
@@ -488,9 +572,9 @@ def run_pipeline_a(
     skip = set(skip_modules or [])
     only = set(only_modules or [])
     for module in cfg["modules"]:
-        if only and module not in only:
-            cfg["modules"][module]["enabled"] = False
-        if module in skip:
+        if only:
+            cfg["modules"][module]["enabled"] = (module in only)
+        elif module in skip:
             cfg["modules"][module]["enabled"] = False
 
     # Setup directories
@@ -584,16 +668,30 @@ def run_pipeline_a(
                 logger.error(f"  Emotion failed: {e}")
                 asset_scores["emotion"] = {"error": str(e)}
 
+        # ── LEMONADE SERVER (HARD RESET DISABLED - Qwen 3.5 9B with 96GB VRAM) ───────────
+        # Lemonade server now runs permanently to support MiroFish embedding generation
+        # during simulation without restarts or VRAM flushes
+        # if cfg["modules"]["mirofish"]["enabled"]:
+        #     restart_lemonade_server()
+
         # ── MIROFISH ──────────────────────────────────────────────
         mirofish_result = None
+        mirofish_failed = False
         if cfg["modules"]["mirofish"]["enabled"]:
-            logger.info("\n[5/5] MiroFish Social Simulation...")
+            logger.info("\n[5/5] MiroFish Social Simulation (API)...")
             try:
-                mirofish_result = run_mirofish(assets, cfg, campaign_path)
+                mirofish_result = run_mirofish(
+                    assets=assets,
+                    config=cfg,
+                    campaign_dir=campaign_path,
+                    brand_context="Apple vs Samsung" # Can become dynamic later
+                )
                 asset_scores["mirofish"] = mirofish_result
             except Exception as e:
-                logger.error(f"  MiroFish failed: {e}")
-                asset_scores["mirofish"] = {"error": str(e)}
+                logger.error(f"  MiroFish API failed: {e}")
+                mirofish_result = {"error": str(e), "failed": True}
+                asset_scores["mirofish"] = mirofish_result
+                mirofish_failed = True
         else:
             logger.info("\n[5/5] MiroFish — skipped (enable when API ready)")
             mirofish_result = {"positive_sentiment": 0.5}
@@ -622,14 +720,6 @@ def run_pipeline_a(
         interim_path = scores_dir / "pipeline_results_interim.json"
         interim_path.write_text(json.dumps(asset_results, indent=2))
 
-    # ── MIROFISH campaign-level (once for all assets) ─────────────
-    if cfg["modules"]["mirofish"]["enabled"] and assets:
-        logger.info("\n[MiroFish] Running campaign-level simulation...")
-        mirofish_campaign = run_mirofish(assets, cfg, campaign_path)
-        for r in asset_results:
-            if "mirofish" not in r or "error" in r.get("mirofish", {}):
-                r["mirofish"] = mirofish_campaign
-
     # ── FINAL REPORT ──────────────────────────────────────────────
     pipeline_elapsed = time.time() - t_pipeline_start
 
@@ -639,12 +729,27 @@ def run_pipeline_a(
         reverse=True
     )
 
+    # Track failed assets (those with errors in any module)
+    failed_assets = []
+    for r in asset_results:
+        asset_name = r.get("asset_name", "unknown")
+        has_error = False
+        # Check all module results for errors
+        for module_name in ["tribe", "saliency", "clip", "emotion", "mirofish"]:
+            module_result = r.get(module_name, {})
+            if isinstance(module_result, dict) and ("error" in module_result or module_result.get("failed")):
+                has_error = True
+                break
+        if has_error:
+            failed_assets.append(asset_name)
+
     report = {
         "campaign":        campaign_path.name,
         "n_assets":        len(assets),
         "modules_run":     [m for m, c in cfg["modules"].items() if c["enabled"]],
         "brand_labels":    cfg["clip"]["brand_labels"],
         "total_time_s":    round(pipeline_elapsed, 1),
+        "failed_assets":   failed_assets,
         "ranking":         [
             {
                 "rank":          i + 1,
@@ -677,6 +782,14 @@ def run_pipeline_a(
             f"  #{entry['rank']} {entry['asset']:30s} "
             f"Score: {entry['total_score']:.3f} (Grade {entry['grade']})"
         )
+
+    # Log failed assets
+    if failed_assets:
+        logger.warning(f"\n FAILED ASSETS ({len(failed_assets)}):")
+        for asset_name in failed_assets:
+            logger.warning(f"  - {asset_name}")
+    else:
+        logger.info("\n All assets processed successfully!")
 
     return report
 

@@ -513,11 +513,14 @@ class SaliencyScorer:
         cy1, cy2 = h // 4, 3 * h // 4
         cx1, cx2 = w // 4, 3 * w // 4
         center_attention = float(mean_sal[cy1:cy2, cx1:cx2].mean())
-        global_mean = float(mean_sal.mean())
-        center_bias = min(center_attention / (global_mean + 1e-8), 1.0)
+        peripheral_attention = float(np.concatenate([
+            mean_sal[:cy1].flatten(), mean_sal[cy2:].flatten(),
+            mean_sal[cy1:cy2, :cx1].flatten(), mean_sal[cy1:cy2, cx2:].flatten()
+        ]).mean() + 1e-8)
+        center_bias = min(center_attention / peripheral_attention, 1.0)
 
         # Temporal variance — how much does attention shift over time?
-        temporal_variance = float(np.std([m.mean() for m in saliency_maps]))
+        temporal_variance = float(np.std([m.mean() for m in saliency_maps]) / (np.mean([m.mean() for m in saliency_maps]) + 1e-8))
 
         # Save outputs
         output_paths = {}
@@ -542,7 +545,7 @@ class SaliencyScorer:
             # Global metrics
             "center_bias":         center_bias,
             "temporal_variance":   temporal_variance,
-            "mean_saliency":       global_mean,
+            "mean_saliency":       float(mean_sal.mean()),
             # Paths
             "saliency_map_path":   output_paths.get("mean_saliency_npy"),
             "heatmap_png_path":    output_paths.get("heatmap_png"),

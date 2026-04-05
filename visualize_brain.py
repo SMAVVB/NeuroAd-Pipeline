@@ -156,7 +156,6 @@ def visualize(
             title=title,
             axes=ax,
             figure=fig,
-            darkness=0.5,
         )
         ax.set_facecolor("#1a1a2e")
         ax.title.set_color("white")
