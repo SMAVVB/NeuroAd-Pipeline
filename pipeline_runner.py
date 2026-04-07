@@ -497,7 +497,7 @@ def compute_composite(
         "emotional_impact":  safe_get(tribe_result,    "emotional_impact"),
         "visual_attention":  safe_get(saliency_result, "center_bias"),
         "brand_consistency": safe_get(clip_result,     "brand_match_score"),
-        "social_sentiment":  safe_get(mirofish_result, "positive_sentiment"),
+        "social_sentiment":  safe_get(mirofish_result.get("llm_scores", mirofish_result) if mirofish_result else None, "positive_sentiment"),
         "facial_emotion":    max(0.0, (safe_get(emotion_result, "emotional_valence") + 1) / 2),
         "audio_engagement":  safe_get(tribe_result,    "language_engagement"),
     }
@@ -680,11 +680,13 @@ def run_pipeline_a(
         if cfg["modules"]["mirofish"]["enabled"]:
             logger.info("\n[5/5] MiroFish Social Simulation (API)...")
             try:
+                context_file = campaign_path / "brand_context.txt"
+                brand_context = context_file.read_text(encoding="utf-8") if context_file.exists() else f"Campaign: {campaign_path.name}"
                 mirofish_result = run_mirofish(
                     assets=assets,
                     config=cfg,
                     campaign_dir=campaign_path,
-                    brand_context="Apple vs Samsung" # Can become dynamic later
+                    brand_context=brand_context
                 )
                 asset_scores["mirofish"] = mirofish_result
             except Exception as e:

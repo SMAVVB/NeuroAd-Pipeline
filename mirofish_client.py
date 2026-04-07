@@ -77,7 +77,7 @@ class MiroFishClient:
         }
         data = {
             "simulation_requirement": context,
-            "llm_model": "extra.Qwen3.5-9B-Q4_K_M.gguf",
+            "llm_model": "extra.Qwen2.5-14B-Instruct-Q4_K_M.gguf",
             "embedding_model": "extra.bge-m3-FP16.gguf"
         }
         
@@ -96,7 +96,7 @@ class MiroFishClient:
             f"{self.base_url}/graph/build",
             json={
                 "project_id": project_id,
-                "llm_model": "extra.Qwen3.5-9B-Q4_K_M.gguf",
+                "llm_model": "extra.Qwen2.5-14B-Instruct-Q4_K_M.gguf",
                 "embedding_model": "extra.bge-m3-FP16.gguf"
             }
         )
@@ -116,7 +116,7 @@ class MiroFishClient:
                 "project_id": project_id,
                 "graph_id": graph_id,
                 "name": campaign_name,
-                "llm_model": "extra.Qwen3.5-9B-Q4_K_M.gguf",
+                "llm_model": "extra.Qwen2.5-14B-Instruct-Q4_K_M.gguf",
                 "embedding_model": "extra.bge-m3-FP16.gguf"
             }
         )
@@ -202,7 +202,7 @@ class MiroFishClient:
         logger.info("[MiroFishClient] Simulation completed successfully")
         return final_report
 
-    def _poll_graph_task(self, task_id: str, project_id: str, poll_interval: int = 5, max_retries: int = 30) -> str:
+    def _poll_graph_task(self, task_id: str, project_id: str, poll_interval: int = 60, max_retries: int = 30) -> str:
         """
         Poll the graph task status endpoint until completion.
         
@@ -300,7 +300,7 @@ class MiroFishClient:
             logger.warning(f"[MiroFishClient] Unexpected error checking simulation log: {e}")
             return False
 
-    def _poll_simulation(self, simulation_id: str, poll_interval: int = 15, max_retries: int = 360) -> str:
+    def _poll_simulation(self, simulation_id: str, poll_interval: int = 60, max_retries: int = 90) -> str:
         """
         Poll the simulation status endpoint until completion.
 
@@ -361,12 +361,13 @@ class MiroFishClient:
         system_prompt = """Du bist ein Datenanalyst. Lies den folgenden Report und extrahiere exakt vier Metriken zwischen 0.0 und 1.0 als reines JSON-Objekt ohne Markdown-Formatierung: positive_sentiment, negative_sentiment, virality_score, controversy_risk."""
         
         payload = {
-            "model": "Lemonade",
+            "model": "extra.Qwen2.5-14B-Instruct-Q4_K_M.gguf",
             "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": markdown_content}
             ],
-            "temperature": 0.7
+            "temperature": 0.1,
+            "max_tokens": 200
         }
         
         try:
@@ -432,7 +433,7 @@ class MiroFishClient:
                 "controversy_risk": 0.5
             }
 
-    def _poll_report_generation(self, task_id: str, poll_interval: int = 5, max_retries: int = 360) -> dict:
+    def _poll_report_generation(self, task_id: str, poll_interval: int = 60, max_retries: int = 90) -> dict:
         """
         Poll the report generation status endpoint until completion.
 
