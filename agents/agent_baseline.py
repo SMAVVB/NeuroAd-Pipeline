@@ -3,7 +3,7 @@ import sys
 from curl_cffi import requests as curl_requests
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config_core import ask_llm, search_searxng, MODEL_WORKHORSE
+from config_core import ask_llm, search_searxng, MODEL_WORKHORSE, MODEL_JUDGE
 from agents.agent_scraper import extract_clean_text # HIER IST DER RETTER!
 
 def get_quick_web_context(brand: str) -> str:
@@ -43,6 +43,26 @@ def generate_baseline(brand: str, save_dir: str) -> str:
     Schreibe in klaren, datengetriebenen Stichpunkten."""
     
     verified_seed = ask_llm(draft_prompt, f"Erstelle Broad-Baseline für {brand}", MODEL_WORKHORSE)
+    
+    # Validation durch DeepSeek R1
+    print(f"   🧐 DeepSeek R1 validiert Phase 0 Seed...")
+    validation_prompt = f"""Du bist ein Fact-Checker. Prüfe diesen automatisch generierten Brand-Report für '{brand}' auf faktische Fehler.
+
+REPORT:
+{verified_seed}
+
+Antworte in diesem Format:
+BEWERTUNG: <1-10>
+FEHLER: <Liste der faktischen Fehler, oder "Keine gefunden">
+KORREKTUREN: <Korrigierter Text nur für fehlerhafte Stellen, oder "Keine nötig">"""
+
+    validation = ask_llm(validation_prompt, f"Validiere Seed für {brand}", MODEL_JUDGE)
+
+    # Validierungs-Ergebnis speichern
+    validation_path = os.path.join(save_dir, "Phase_0_Validation.md")
+    with open(validation_path, "w", encoding="utf-8") as f:
+        f.write(f"# Phase 0 Validation: {brand}\n\n{validation}")
+    print(f"   ✅ Validation gespeichert.")
     
     file_path = os.path.join(save_dir, "Phase_0_Verified_Seed.md")
     with open(file_path, "w", encoding="utf-8") as f:

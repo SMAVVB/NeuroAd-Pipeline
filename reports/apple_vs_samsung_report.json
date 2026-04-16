@@ -1,0 +1,108 @@
+{
+  "campaign": "apple_vs_samsung",
+  "brand": "apple",
+  "generated_at": "2026-04-15T14:52:13.465447",
+  "creative_rankings": {
+    "overall": [
+      "campaigns/apple_vs_samsung/assets/apple_pay_outrun.mp4",
+      "campaigns/apple_vs_samsung/assets/apple_iphone17_scratch.mp4",
+      "campaigns/apple_vs_samsung/assets/apple_iphone17pro_ultimate.mp4"
+    ],
+    "by_module": {
+      "tribe": [
+        "campaigns/apple_vs_samsung/assets/apple_pay_outrun.mp4"
+      ],
+      "mirofish": [
+        "campaigns/apple_vs_samsung/assets/apple_iphone17_scratch.mp4"
+      ],
+      "clip": [
+        "campaigns/apple_vs_samsung/assets/apple_iphone17pro_ultimate.mp4"
+      ],
+      "vinet": [
+        "campaigns/apple_vs_samsung/assets/apple_pay_outrun.mp4"
+      ]
+    }
+  },
+  "module_analyses": {
+    "tribe": {
+      "summary": "Die vorliegenden TRIBE v2 Scores zeichnen das Bild einer hochgradig kontrollierten, minimalistischen Werbestrategie, die typisch für die Markenführung von Apple ist. Das durchschnittliche Engagement von 0,180 liegt in einem moderaten Bereich, was auf eine bewusste Vermeidung von überreizenden Stimuli hindeutet. Anstatt auf kurzfristige Schockeffekte oder aggressive visuelle Reize zu setzen, erzeugt das Video eine subtile, aber konstante neuronale Aktivierung. Besonders auffällig ist die Facial Response von 0,206, welche den höchsten Einzelwert darstellt. Neurologisch lässt dies auf eine starke Aktivierung der Fusiform Face Area schließen, wobei die Spiegelneuronen des Betrachters durch die Darstellung menschlicher Emotionen oder Interaktionen angesprochen werden. Dies schafft eine empathische Verbindung zur Marke, ohne den Nutzer kognitiv zu überfordern.\n\nDie neurologischen Mechanismen basieren hier primär auf einer tonischen Aufmerksamkeit statt auf phasischen Peaks. Während der emotionale Impact mit 0,159 eher niedrig ausfällt, deutet dies auf eine kognitive Verarbeitung hin, die auf Ästhetik und Prestige setzt statt auf primäre Affekte wie Angst oder extreme Freude. Die Motion- und Szenen-Response bewegen sich auf einem sehr ähnlichen Niveau, was eine harmonische visuelle Rhythmik belegt. Es gibt keine abrupten Brüche in der Bildsprache, die das Gehirn zu einer abrupten Neuorientierung zwingen würden.\n\nDie Engagement-Stabilität von 0,986 ist der kritischste Wert dieser Analyse. Ein Wert so nah an der Perfektion bedeutet, dass die Aufmerksamkeit über die gesamte Dauer des Videos nahezu linear bleibt. Es treten keine signifikanten Abfälle auf, was das Risiko eines Attentional Blink minimiert. Für die Aufmerksamkeitsdauer bedeutet dies, dass der Betrachter in einen Zustand des Flows versetzt wird, in dem die Information ohne Widerstand aufgenommen wird. Die neuronale Last bleibt konstant, was eine hohe Verarbeitungsqualität der Markenbotschaft ermöglicht.\n\nDer zeitliche Peak bei Segment 31 von 36 belegt eine klassische narrative Spannungskurve. Das Engagement wird über den Großteil des Videos stabil gehalten und erst kurz vor dem Ende auf einen Höhepunkt geführt. Wissenschaftlich betrachtet handelt es sich um eine Slow-Burn-Strategie, bei der die neuronale Erregung graduell gesteigert wird, um die finale Markenbotschaft oder das Produkt-Reveal mit maximaler Wirkung zu platzieren. Die Werbewirkung ist somit nicht auf kurzfristige Aufmerksamkeit, sondern auf eine tiefe, stabile Verankerung im Langzeitgedächtnis durch konsistente ästhetische Stimulation ausgelegt.\n\nTRIBE v2 Analyse, neuronale Engagement-Stabilität, Fusiform Face Area, tonische Aufmerksamkeit, Slow-Burn-Marketing.",
+      "strengths": [
+        "Starke neurale Aktivierung (0.181)",
+        "Starke Gesichts-Response (Fokus auf Menschen)",
+        "Hoher emotionaler Impact",
+        "Hohe Engagement-Stabilität über den gesamten Videoverlauf",
+        "Starke Motion-Response (Bewegungserkennung)",
+        "Starke neurale Aktivierung (0.205)",
+        "Starke neurale Aktivierung (0.184)"
+      ],
+      "weaknesses": [
+        "Niedrige neurale Aktivierung (<0.18)",
+        "Geringer emotionaler Impact",
+        "Schwache Gesichts-Response",
+        "Schwache Motion-Response"
+      ],
+      "recommendations": [
+        "Integrieren Sie mehr dynamische Bewegungselemente",
+        "Erhöhen Sie den Fokus auf menschliche Gesichter im Video",
+        "Stärken Sie den emotionalen Call-to-Action"
+      ]
+    },
+    "mirofish": {
+      "summary": "### Analyse der MiroFish Social Scores: Apple Creative\n\n**Resonanzmuster & Performance-Analyse**\n*   **Diskrepanz Markenwert vs. Content:** Massive Differenz zwischen Markenaffinität (0.800) und sozialer Resonanz (0.500).\n*   **Brand-Carry-Effekt:** Die hohe Markenaffinität stützt das Creative, während die eigentliche Performance (Note C) unter dem Durchschnitt (0.575) liegt.\n*   **Engagement-Defizit:** Zielgruppenübereinstimmung, emotionale Resonanz und Teilbarkeit stagnieren auf einem neutralen Median (0.500).\n*   **Ergebnis:** Das Video nutzt die starke Apple-Brand, scheitert aber an der spezifischen kreativen Umsetzung, um aktive Interaktionen auszulösen.\n\n`Apple Brand Equity` `Creative Performance Gap` `User Engagement Metrics`\n\n**Analyse der Teilbarkeit (Shareability: 0.500)**\n*   **Status:** Neutrale Resonanz. Keine viralen Trigger vorhanden.\n*   **Fehlende Elemente:** Mangel an emotionalen Peaks oder funktionalem Mehrwert, die über die reine Markenpräsenz hinausgehen.\n*   **Hypothese:** Zu starke Fokussierung auf Produktästhetik statt auf Nutzer-Storytelling oder soziale Währung.\n\n`Viral Triggers` `Emotional Hooks` `Shareability Factors`\n\n**Strategische Einordnung**\n*   **Klassifizierung:** \"Brand-driven, Content-weak\".\n*   **Bewertung:** Das Creative ist sicher, aber ineffektiv. Es generiert passive Sichtbarkeit, aber keine aktive Community-Resonanz.\n*   **Optimierungsbedarf:** Steigerung der emotionalen Resonanz, um die Lücke zwischen Markenliebe (0.800) und Content-Interaktion (0.500) zu schließen.\n\n`Content Strategy Optimization` `Conversion Rate Optimization` `Brand Resonance Analysis`",
+      "strengths": [
+        "Starke Markenaffinität"
+      ],
+      "weaknesses": [
+        "Geringe Zielgruppenübereinstimmung",
+        "Schwacher emotionaler Resonanz-Effekt"
+      ],
+      "recommendations": [
+        "Machen Sie das Creative teilerfreundlicher",
+        "Optimieren Sie die Zielgruppenansprache",
+        "Stärken Sie den emotionalen Call-to-Action"
+      ]
+    },
+    "clip": {
+      "summary": "### Analyse der Brand Consistency (Marke: Apple)\n\n**Brand Match Score: 0.200 (Kategorie: weak)**\nKritisch niedriger Wert. Die visuelle Umsetzung korreliert kaum mit der etablierten Apple-Design-DNA.\n\n#### Visuelle Elemente: Stärken und Schwächen\n\n**Schwächende Elemente:**\n*   **Mangelnde Minimalistik:** Der niedrigste Score bei „sleek minimalist design“ (0.193) ist fatal. Apple definiert sich über White Space, präzise Linienführung und Reduktion.\n*   **Übersteigerte Farbsättigung:** „Vibrant colorful energy“ (0.197) steht im Kontrast zur typischen, kontrollierten und hochwertigen Farbpalette der Marke.\n*   **Visuelle Diffusion:** Die geringe Differenz zwischen den Scores (0.193 bis 0.208) deutet auf ein undefiniertes visuelles Konzept hin.\n\n**Stärkende Elemente:**\n*   **Narrative Struktur:** „Cinematic storytelling“ (0.208) und „emotional lifestyle“ (0.200) spiegeln Apples Strategie wider, Produkte in menschliche Kontexte zu setzen.\n*   **Funktionale Darstellung:** „Feature demonstration“ (0.202) zeigt eine korrekte Fokussierung auf die Produktnutzung.\n\n#### Konsistenz der visuellen Botschaft\n**Nicht konsistent.**\nDie visuelle Sprache ist fragmentiert. Es fehlt ein dominanter visueller Anker. Die Botschaft schwankt zwischen generischem Werbevideo („vibrant energy“) und Markenanspruch („minimalist design“), wobei letzterer unterrepräsentiert ist.\n\n#### Analyse der visuellen Markenwirkung\nDie Wirkung ist **generisch**. Das Video nutzt zwar filmische Mittel, verliert aber die spezifische Apple-Identität. Anstatt „Premium-Minimalismus“ wird eine „bunte Energie“ transportiert, die eher an Consumer-Electronics-Konkurrenz oder Lifestyle-Apps erinnert als an das High-End-Positioning von Apple.\n\n**Keywords für Optimierung:**\n`Apple Design Guidelines` `Minimalist Visual Language` `High-Key Lighting` `Product Centric Composition` `White Space Branding`",
+      "strengths": [
+        "Klare visuelle Ausrichtung: 'cinematic storytelling'",
+        "Klare visuelle Ausrichtung: 'feature demonstration'"
+      ],
+      "weaknesses": [
+        "Schwache Brand-Konsistenz (0.200)",
+        "Geringe Label-Diskriminierung (zu viele ähnliche Scores)"
+      ],
+      "recommendations": [
+        "Schärfen Sie die visuelle Botschaft",
+        "Stärken Sie die visuelle Brand Identity"
+      ]
+    },
+    "vinet": {
+      "summary": "**Analyse der visuellen Aufmerksamkeitsführung**\n\n**Aufmerksamkeitsverteilung**\n*   **Saliency-Kollaps:** Gesamte Aufmerksamkeitsscores bei 0.000. Keine visuelle Stimulation detektiert.\n*   **Extremer Center Bias (1.00):** Fokus starr auf dem Bildzentrum fixiert. Keine dynamische Blickführung über das Frame.\n*   **Null-Varianz:** Zeitliche Varianz von 0.000 signalisiert absolute Statik. Keine Bewegung oder visuelle Reize, die den Blick lenken.\n\n**Element-Bewertung (Apple)**\n*   **Produkt-Sichtbarkeit:** Nicht vorhanden. Produkt zieht keine Aufmerksamkeit auf sich.\n*   **Brand-Sichtbarkeit:** Nicht vorhanden. Apple-Logo/Branding ohne visuelle Relevanz.\n*   **CTA-Effektivität:** Nicht vorhanden. Call-to-Action wird vollständig ignoriert.\n\n**Fazit der visuellen Führung**\nDas Creative versagt vollständig in der Aufmerksamkeitssteuerung. Es findet keine gezielte Lenkung auf die markenrelevanten Elemente statt. Die visuelle Hierarchie ist nicht existent; das Auge verharrt passiv im Zentrum, ohne relevante Informationen zu erfassen.\n\n**Optimierungs-Keywords**\nViNet Saliency Optimierung, Visual Attention Heatmap, Center Bias Reduktion, Contrast-Driven Attention, Brand Saliency Apple.",
+      "strengths": [
+        "Konsistente Aufmerksamkeit über den Videoverlauf"
+      ],
+      "weaknesses": [
+        "Niedrige Aufmerksamkeitssteuerung (0.000)",
+        "Schwache Fokuspunkt-Qualität"
+      ],
+      "recommendations": [
+        "Lenken Sie die Aufmerksamkeit stärker auf das Produkt",
+        "Stärken Sie die Markenpräsenz visuell",
+        "Machen Sie den Call-to-Action sichtbarer"
+      ]
+    }
+  },
+  "master_summary": "### Gesamtwirkung der Werbekampagne:\nDie Werbekampagne von Apple zeigt eine starke Markenidentität, aber Schwächen in visueller Konsistenz und Engagement. Während die neurale Aktivierung und emotionale Resonanz punkten, fehlt es an dynamischer visueller Aufmerksamkeitsführung und emotionaler Tiefe.\n\n### Starke Ergebnisse:\n- **TRIBE Analysis:** Hohe neurale Aktivierung, starke Gesichts-Response und emotionaler Impact.\n- **MIROFISH Analysis:** Starke Markenaffinität, die das Creative stützt.\n\n### Verbesserungspotenzial:\n- **CLIP Analysis:** Schwache Brand-Konsistenz und mangelnde Minimalistik.\n- **VINET Analysis:** Niedrige Aufmerksamkeitssteuerung und statische visuelle Elemente.\n\n### Handlungsempfehlungen:\n1. **Verbesserte visuelle Aufmerksamkeitsführung:** Dynamischere Elemente und bessere Blickführung.\n2. **Stärkere emotionale Resonanz:** Tiefergehende emotionale Momente in Inhalten.\n3. **Konsistente Markenästhetik:** Wiederherstellung der minimalistischen Apple-Design-DNA.\n4. **Optimierung der sozialen Resonanz:** Verbesserung von Engagement und Teilbarkeit.",
+  "recommendations": [
+    "Integrieren Sie mehr dynamische Bewegungselemente** in die Videos, um die visuelle Attraktivität zu erhöhen.",
+    "Konzentrieren Sie sich stärker auf menschliche Gesichter**, um eine emotionale Verbindung zum Publikum herzustellen.",
+    "Stärken Sie den emotionalen Call-to-Action**, um die Zuschauer zu einer Reaktion zu bewegen.",
+    "Machen Sie das Creative teilerfreundlicher**, indem Sie es ansprechend und einfach weiterzuempfehlen gestalten.",
+    "Optimieren Sie die Zielgruppenansprache**, um die Botschaft präziser an die Bedürfnisse der Zielgruppe anzupassen.",
+    "Schärfen Sie die visuelle Botschaft**, um die Kernnachricht klarer zu vermitteln.",
+    "Stärken Sie die visuelle Markenidentität**, um die Erkennbarkeit der Marke zu erhöhen.",
+    "Lenken Sie die Aufmerksamkeit stärker auf das Produkt**, um dessen Vorteile hervorzuheben.",
+    "Machen Sie den Call-to-Action sichtbarer**, um die Konversion zu fördern."
+  ]
+}

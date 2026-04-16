@@ -76,6 +76,7 @@ htmlcov/
 *.tmp
 *.temp
 .cache/
+cache/
 
 # Test files
 test_mirofish.py
@@ -95,6 +96,11 @@ campaigns/*/assets/
 # Node modules
 node_modules/
 dashboard_v2/node_modules/
+
+# Submodule directories (separate git repos)
+tools/DeepGaze/
+tools/ViNet_v2/
+tools/tribev2/
 
 # Database files
 *.sqlite

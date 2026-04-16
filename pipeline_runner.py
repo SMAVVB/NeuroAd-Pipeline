@@ -142,6 +142,29 @@ DEFAULT_CONFIG = {
         "brand_labels": ["advertisement", "product", "brand"],
     },
 
+    # --------------------------------------------------------------------------
+    # Module Upgrade Notes
+    # --------------------------------------------------------------------------
+    # To add a new scorer module (e.g., SigLIP2 replacing CLIP):
+    #
+    # 1. Create tools/<new_scorer>_wrapper.py implementing BaseScorerModule:
+    #    class SigLIP2ScorerModule(BaseScorerModule):
+    #        def __init__(self, name: str, version: str):
+    #            super().__init__(name, version)
+    #            self.device = "cuda" if torch.cuda.is_available() else "cpu"
+    #            self.model, self.preprocess = siglip2.load("ViT-L/16", device=self.device)
+    #        def score(self, asset_path: str, brand_context: dict) -> dict:
+    #            # ... scoring logic ...
+    #            return result
+    #        def is_available(self) -> bool:
+    #            return has_siglip2()
+    #
+    # 2. Add config entry here (similar to "clip" section above)
+    #
+    # 3. Update run_pipeline_a() to call the new module via BaseScorerModule
+    #
+    # 4. Add config switch in DEFAULT_CONFIG["modules"] to enable/disable
+
     # HSEmotion
     "emotion": {
         "device": "auto",
