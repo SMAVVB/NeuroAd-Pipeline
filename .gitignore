@@ -80,3 +80,24 @@ htmlcov/
 # Test files
 test_mirofish.py
 test_creative.txt
+
+# Project specific
+raw_data/
+**/__pycache__/
+.pyc
+chroma_db/
+chroma_db_backup/
+
+# Campaign scores
+campaigns/*/scores/*.npy
+campaigns/*/assets/
+
+# Node modules
+node_modules/
+dashboard_v2/node_modules/
+
+# Database files
+*.sqlite
+
+# Lemonade token log
+~/.lemonade_token_log.jsonl
