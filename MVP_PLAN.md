@@ -1,248 +1,202 @@
 # NeuroAd Pipeline — MVP Plan
 
-**Stand:** 7. April 2026  
-**Hardware:** The Beast (AMD Strix Halo, Ryzen AI MAX+ 395, 96 GB Unified Memory, Radeon 8060S gfx1151, Ubuntu 24.04)  
-**Scope:** Pipeline A — bestehende Werbung analysieren, keine Generierung  
+**Stand:** 16. April 2026  
+**Hardware:** The Beast (AMD Ryzen AI MAX+ 395, Radeon 8060S iGPU, 96 GB Unified RAM, Ubuntu 24.04)  
 **Repo:** github.com/SMAVVB/NeuroAd-Pipeline  
-**Venv:** `venv_rocm` (Python 3.12, PyTorch 2.11+rocm7.11) — auto-aktiviert via `.bashrc`
+**Scope:** Pipeline A only — bestehende Werbung analysieren, keine Generierung
 
 ---
 
-## Aktueller Infrastruktur-Status (7. April 2026)
+## Aktueller System-Status
 
 | Komponente | Status | Anmerkung |
 |---|---|---|
-| GPU/ROCm (Radeon 8060S, gfx1151) | ✅ | PyTorch 2.11.0+rocm7.11, CUDA=True |
-| TRIBE v2 (GPU) | ✅ | Läuft mit venv_rocm, Transformer auf GPU |
-| TRIBE v2 (V-JEPA2 Video-Encoder) | ✅ | Sequential loading via ModelManager, num_frames=16 |
-| CLIP | ✅ | Import OK, läuft auf GPU |
-| HSEmotion | ✅ | Import OK |
-| ViNet-S | ✅ | Integriert in saliency_scorer.py |
-| MiroFish + Neo4j 5.18 | ✅ | **VOLLSTÄNDIG INTEGRIERT** — localhost:3000/5001/7474 |
-| MiroFish API Wrapper | ✅ | mirofish_client.py fertig, End-to-End getestet |
-| Lemonade SDK | ✅ | Port 8888, Vulkan-Backend für MiroFish |
-| pipeline_runner.py | ✅ | Alle 5 Module orchestriert |
-| Flux.1 (diffusers) | ✅ | Import OK (Pipeline B, noch nicht genutzt) |
-| DeepGaze IIE | ❌ | Bitbucket URLs tot, für MVP übersprungen |
-
-### MiroFish Konfiguration (stabil, 7. April 2026)
-
-**LLM:** `extra.Qwen2.5-14B-Instruct-Q4_K_M.gguf` (Vulkan, 32k ctx)  
-**Lemonade starten:** `lemonade-mirofish` (Alias in ~/.bashrc)
-
-```bash
-alias lemonade-mirofish="lemonade-server serve --host 0.0.0.0 --port 8888 \
-  --extra-models-dir /home/vincent/jarvis_os/models \
-  --ctx-size 32768 --llamacpp vulkan"
-```
-
-**WICHTIG:** Qwen3.5 NICHT für MiroFish verwenden — Thinking-Mode produziert invalides JSON.  
-**WICHTIG:** ROCm-Backend für MiroFish meidet → lädt in Shared Memory statt GPU (kein Problem, aber langsamer).
-
-### MiroFish Docker-Patches (permanent in Source-Files, rebuild nötig nach git pull)
-
-Alle Patches liegen in `/home/vincent/jarvis_os/MiroFish-Offline/backend/app/`:
-
-| Datei | Patch |
-|---|---|
-| `utils/llm_client.py` | trailing comma JSON fix, `content=None` fallback, `enable_thinking:False`, JSON-Extraktion |
-| `services/simulation_ipc.py` | `send_command` timeout 60→600s, `send_batch_interview` timeout 120→600s |
-| `services/simulation_runner.py` | Interview-Timeouts 60/120/180→600s |
-| `services/graph_tools.py` | timeout 180→600s |
-| `api/simulation.py` | timeout defaults 60/120/180→600s |
-| `services/report_agent.py` | None-Check nach `interview_agents` |
-| `services/oasis_profile_generator.py` | `parallel_count` 5→1 (Lemonade single-threaded) |
-
-**Rebuild nach Änderungen:**
-```bash
-cd /home/vincent/jarvis_os/MiroFish-Offline
-docker compose down && docker compose build --no-cache && docker compose up -d
-```
-
-### TRIBE v2 Patches (in apply_patches.sh, nach pip install ausführen)
-
-- `neuralset/extractors/video.py` — V-JEPA2 device handling
-- `neuralset/extractors/audio.py` — Wav2Vec/Bert device
-- `neuralset/extractors/text.py` — LLaMA device
-- `tribev2/eventstransforms.py` — WhisperX int8 + cpu
-- `demo_utils.py` — Zeile 193: `device = "cpu"` (verhindert Segfault beim Checkpoint-Laden)
-- `dataloader.py` — sequentielles unload nach prepare()
-
-### Lemonade ROCm Binary (gfx1151-spezifisch)
-
-- Pfad: `/home/vincent/.cache/lemonade/bin/llamacpp/rocm/llama-server`
-- Build: b1231, ROCm 7, gfx1151
-- Für TRIBE/andere Tasks: `lemonade-rocm` Alias (ROCm-Backend)
-- Für MiroFish: `lemonade-mirofish` Alias (Vulkan-Backend, stabiler)
+| GPU/ROCm (Radeon 8060S) | ✅ | gfx1151, PyTorch via rocm.nightlies.amd.com |
+| Lemonade SDK | ✅ | Port 8888, 131k ctx, manuell via lemonade-128k |
+| Lemonade Proxy | ✅ | Port 9002 → 8888, universelles Token Tracking |
+| MiroFish + Neo4j | ✅ | Docker, Port 3000/5001, Vulkan Backend |
+| TRIBE v2 (GPU/ROCm) | ✅ | Läuft auf gfx1151 PyTorch Nightly |
+| CLIP | ✅ | Brand Consistency Scorer aktiv |
+| ViNet-S | ✅ | Saliency Scorer aktiv |
+| SearXNG | ✅ | Port 8889, Self-hosted |
+| Brand Research Agent | ✅ | Komplett, erster erfolgreicher Run (yfood 17k Wörter STORM) |
+| Pipeline A | ✅ | Erster erfolgreicher End-to-End Run (apple_vs_samsung) |
+| Report Agent | ✅ | Alle 4 Module, JSON + Markdown Output |
+| Dashboard v2 | 🔨 | Draft in Lovable/v0.dev, React Frontend |
+| GitHub | 🔨 | .gitignore erstellt, Push ausstehend |
 
 ---
 
-## Pipeline A — Aktuelle Architektur
+## Infrastruktur & Konfiguration
 
-```
-campaigns/<name>/assets/     ← Input: Videos, Bilder
-        │
-        ▼
-[Brand Context]              ← brand_context.txt pro Kampagne (manuell, Agent geplant)
-        │
-        ▼
-┌─────────────────────────────────────────────────────────┐
-│              SCORING LAYER (pipeline_runner.py)          │
-│                                                          │
-│  [1] TRIBE v2        → neural_engagement, emotional_     │
-│                         impact, ROI-Scores (fMRI)        │
-│                                                          │
-│  [2] ViNet-S         → visual_attention, center_bias,    │
-│                         saliency maps                    │
-│                                                          │
-│  [3] CLIP            → brand_consistency                 │
-│                                                          │
-│  [4] HSEmotion       → facial_emotion, valence           │
-│                                                          │
-│  [5] MiroFish        → social_sentiment, virality,       │
-│                         controversy_risk + Report        │
-└─────────────────────────────────────────────────────────┘
-        │
-        ▼
-Composite Score (gewichtet) → pipeline_a_results.json
-```
+### Lemonade Modelle
+- MODEL_WORKHORSE: extra.gemma-4-31B-it-Q4_K_M.gguf (~10-11 TPS)
+- MODEL_JUDGE:     extra.DeepSeek-R1-Distill-Llama-70B-Q4_K_M.gguf
+- MODEL_FAST:      extra.moonshotai_Kimi-Linear-48B-A3B-Instruct-Q5_K_M.gguf
+- Claude Code:     extra.Qwen3-Coder-Next-Q4_K_M.gguf (~45-50 TPS)
 
-### Scoring-Gewichtung (aktuell)
+### Kritische Konfiguration
+- LLM_URL: http://127.0.0.1:9002/v1/chat/completions (via Proxy → 8888)
+- SEARXNG_URL: http://127.0.0.1:8889/search
+- global_timeout: 1800 in ~/.cache/lemonade/config.json
+- PYTORCH_ALLOC_CONF=expandable_segments:True (OOM Prevention)
+- BASH_DEFAULT_TIMEOUT_MS: 600000 in ~/.claude/settings.json
 
-```python
-WEIGHTS = {
-    'neural_engagement':  0.25,   # TRIBE v2
-    'emotional_impact':   0.15,   # TRIBE v2 TPJ
-    'visual_attention':   0.20,   # ViNet-S
-    'brand_consistency':  0.15,   # CLIP
-    'social_sentiment':   0.10,   # MiroFish
-    'facial_emotion':     0.10,   # HSEmotion
-    'audio_engagement':   0.05,   # TRIBE v2 Broca
+### Claude Code settings.json (~/.claude/settings.json)
+```json
+{
+  "model": "extra.Qwen3-Coder-Next-Q4_K_M.gguf",
+  "smallModel": "extra.Qwen3-Coder-Next-Q4_K_M.gguf",
+  "largeModel": "extra.Qwen3-Coder-Next-Q4_K_M.gguf",
+  "apiBaseUrl": "http://localhost:8888/api/v1",
+  "env": {
+    "BASH_DEFAULT_TIMEOUT_MS": "600000",
+    "BASH_MAX_TIMEOUT_MS": "600000"
+  }
 }
 ```
 
-### Ordnerstruktur pro Kampagne
-
-```
-campaigns/apple_vs_samsung/
-├── assets/              ← Videos/Bilder
-├── brand_context.txt    ← Brand-Kontext für MiroFish (manuell erstellt)
-├── scores/              ← JSON Outputs aller Scorer + .npy Brain-Maps
-├── mirofish/            ← MiroFish Simulation Reports
-└── report/              ← pipeline_a_results.json (Finale Ausgabe)
+### Lemonade starten (nach Reboot)
+```bash
+lemonade-128k &
+# NICHT systemd — systemd-Version hat double free crash Bug
 ```
 
 ---
 
-## Was noch fehlt für MVP-Abschluss
+## Architektur
 
-### Priorität 1 — Brand Research Agent
-
-**Was:** Automatischer Agent der Marken-Kontext sammelt und in alle Pipeline-Schritte einspeist.
-
-**Warum kritisch:** Aktuell ist `brand_context.txt` manuell erstellt. Für MiroFish besonders wichtig — bessere Personas, relevantere Simulation. Für CLIP: brand-spezifische Labels statt generische. Für den Final Report: wissenschaftlich fundierte Kontextualisierung.
-
-**Stack:** Lemonade SDK + Crawl4AI/Firecrawl
-- Crawlt Website, Meta Ad Library, Social Media
-- Extrahiert: Brand DNA, Visual Style, Tone of Voice, Key Messages, Competitor-Liste
-- Output: strukturierte `brand_context.json` die alle Module parametriert
-
-**Integration:**
-- MiroFish: bessere Personas (nicht mehr "TikTok als Agent")
-- CLIP: markenspezifische Labels
-- Final Report: fundierter Kontext
-
-### Priorität 2 — Module-Upgrades (laut Open-Source Research Dokument)
-
-Einfache Drop-In-Replacements mit besserem Output — kein großer Aufwand:
-
-| Aktuell | Upgrade | Aufwand | Gewinn |
-|---|---|---|---|
-| CLIP ViT-B/32 | **SigLIP2 SO400M** | Sehr gering | Bessere multilingual/beschreibende Labels |
-| ViNet-S | **SalFoM** (oder UNISAL) | Gering | Höhere Saliency-Genauigkeit |
-| HSEmotion (nur Emotion) | + **LibreFace** (AU-Intensität) | Gering | Quantitative AU-Scores (0-5) statt nur Labels |
-| — | **CLAP** (Audio-Emotion) | Gering | Zero-Shot Audio-Tagging für Soundtracks |
-
-**Reihenfolge:** SigLIP2 zuerst (einfachster Swap), dann LibreFace.
-
-### Priorität 3 — MiroFish Personas optimieren
-
-**Problem:** Aktuell kommen manchmal Plattformen (TikTok, YouTube) als Agenten statt echter Personas. Brand-Kontext hilft, aber System-Prompts in MiroFish sollten auch angepasst werden.
-
-**Fix:** Ontology-Generator Prompt anpassen — klare Anweisung dass Agenten echte Personen/Rollen sein müssen, keine Plattformen.
-
-### Priorität 4 — Final Report Agent
-
-**Was:** Reasoning-Modell (DeepSeek R1, liegt bereits in `/home/vincent/jarvis_os/models/`) das alle Scores konsolidiert und einen wissenschaftlich fundierten Gesamtreport schreibt.
-
-**Input:** Alle Scorer-Outputs + Brand-Kontext + MiroFish Report  
-**Output:** Strukturierter Report mit: Ranking-Begründung, Stärken/Schwächen je Creative, konkrete Optimierungsempfehlungen
-
-**Hinweis:** TurboQuant (Google, ICLR 2026) — 3-Bit KV-Cache Kompression für LLMs — ermöglicht bis zu 100k-200k Token Kontext bei deutlich weniger RAM. Sobald llama.cpp Integration stabil ist, einbauen für den Research Agent und Final Report Agent. Aktuell noch in PR-Phase.
-
-### Priorität 5 — `failed_assets` Bug fixen
-
-Kleiner Bug in `pipeline_runner.py`: Assets werden als "failed" markiert wenn irgendein Modul einen Fehler hatte, auch wenn die anderen Module erfolgreich waren und ein Score existiert. Fix: nur als failed markieren wenn kein Composite Score berechnet werden konnte.
-
-### Priorität 6 — Datenbank + Dashboard
-
-**Datenbank:** SQLite für Score-Persistenz (bereits vorhanden: `dashboard/neuro_ad.db`)  
-**Dashboard:** React + FastAPI (`dashboard_v2/`) — Design Brief bereits erstellt für v0.dev/Lovable/Bolt
-
-**Dashboard-Features:**
-- Creative Ranking Tabelle
-- 3D Brain Viewer (Three.js) für TRIBE-Seite
-- D3 Force-Directed Agent Network für MiroFish-Seite
-- Saliency Overlay auf Original-Frame
-- AI-generierter Streaming Report (DeepSeek R1)
-- Drei Focus-Modi (Executive, Technical, Creative)
-- Tailscale Remote Access
-
-**Design:** Radikaler Minimalismus — schwarz/weiß/off-white, Linear.app / Vercel-Ästhetik, Geist/Inter + JetBrains Mono für Score-Werte.
+```
+campaigns/<n>/assets/       ← Input: Videos, Bilder
+        │
+        ▼
+Brand Research Agent        ← brand_orchestrator.py
+Phase 0: Seed + Brand Profil   Gemma 4 + DeepSeek R1
+Phase 1: Suchbaum              SearXNG, concurrent=5
+Phase 2: Social + Science      YouTube/Reddit/Twitter/TikTok + CORE API
+Phase 3: Mass Scraper          Scrapling
+Phase 4: STORM TF-IDF          35k+ Chunks → 17k Wörter Report
+Phase 5: Council Audit         Gemma 4 Analyse → Kimi 48B Audit
+        │
+        ▼
+Pipeline A                  ← pipeline_runner.py
+├── TRIBE v2                   ROCm GPU, Neural Engagement
+├── ViNet-S                    CPU, Visual Attention / Saliency
+├── CLIP                       CPU, Brand Consistency
+└── MiroFish                   Docker Vulkan, Social Simulation
+        │
+        ▼
+Report Agent                ← report_agent/report_orchestrator.py
+4 Interpreter (sequenziell)    Gemma 4 für LLM-Analyse
+Output: reports/*.json + .md
+        │
+        ▼
+Dashboard v2                ← React + Vite, Port 3002
+7 Seiten mit Sidebar           Recharts, Three.js, D3.js
+```
 
 ---
 
-## Laufzeit-Referenz (Pipeline A, apple_vs_samsung)
+## Bekannte kritische Fixes & Patches
 
-| Schritt | Dauer |
-|---|---|
-| TRIBE v2 (Video, ~90s) | ~8-15 Min/Asset |
-| ViNet-S Saliency | ~30s/Asset |
-| CLIP | ~5s/Asset |
-| HSEmotion | ~30s/Asset |
-| MiroFish komplett (inkl. Report) | ~60-90 Min/Asset |
-| **Gesamt für 2 Assets** | **~3-4 Stunden** |
+### TRIBE v2
+- get_events_dataframe() muss VOR .to('cuda') aufgerufen werden
+- demo_utils.py Zeile 193: device = "cpu" (verhindert Segfault beim Load)
+- PyTorch Index: https://rocm.nightlies.amd.com/v2/gfx1151/
+- Assets müssen auf 90s via FFmpeg getrimmt werden
 
-MiroFish dominiert die Laufzeit. Optimierungspotential: weniger Simulation-Rounds, kleineres LLM (7B statt 14B wenn JSON-Qualität ausreicht).
+### MiroFish
+- Vulkan Backend (NICHT ROCm) für Stabilität
+- Modell: Qwen2.5-14B-Instruct-Q4_K_M.gguf
+- Qwen3.5-9B abandoned — Thinking-Mode bricht JSON
+- Alle Timeouts auf 600s: simulation_ipc.py, simulation_runner.py, graph_tools.py, api/simulation.py
+- parallel_count=1
+
+### Brand Research Agent
+- ChromaDB DEAKTIVIERT (CHROMADB_AVAILABLE = False) — TF-IDF Fallback aktiv
+- SearXNG concurrent=5 (höher → OOM)
+- Phase 5: Zwei-Schritt (Gemma 4 Analyse → Kimi 48B Audit)
+- YouTube: yt-dlp Fallback wenn Channel-Discovery < 5 Videos
+- agent_social.py Zeile 168: doppelte } entfernt (Syntax-Bug)
+
+### Report Agent
+- asyncio.gather → sequenziell (verhindert Hängen)
+- MiroFish Scores: pipeline_results_final.json ist Liste → Transform nötig
+- MiroFish Transform: mirofish.llm_scores → social_score berechnen
+
+### Pipeline A
+- MiroFish-Scores in pipeline_results_final.json als Liste (nicht Dict)
 
 ---
 
-## Offene Technische Schulden
+## Multica Setup
 
-- [ ] `brand_context` in `pipeline_runner.py` noch hardcoded — muss aus `brand_context.txt` oder Brand Agent kommen
-- [ ] `failed_assets` Bug im Report — zeigt Assets als failed obwohl Score existiert
-- [ ] MiroFish Persona-Qualität — Plattformen erscheinen manchmal als Agenten
-- [ ] TRIBE v2 Flash Attention noch nicht aktiviert (`TORCH_ROCM_AOTRITON_ENABLE_EXPERIMENTAL=1`)
-- [ ] neuralset Patches gehen bei `pip install` verloren — `apply_patches.sh` manuell ausführen
-- [ ] MiroFish: `lemonade-mirofish` muss vor jedem Run manuell gestartet werden
+### Agents
+- NeuroAd-Dev: General Coding (Qwen3-Coder-Next via Lemonade)
+
+### Claude Code 2h Session Limit
+Claude Code hat ein hardcodiertes 2h Timeout.
+Lösung: Prozesse mit nohup starten, Claude Code überwacht nur.
+```bash
+nohup python3 brand_orchestrator.py "Brand" > run_$(date +%Y%m%d_%H%M%S).log 2>&1 &
+```
 
 ---
 
-## Priorisierungs-Matrix (verbleibende Arbeit)
+## Token Tracking
 
-| Feature | Schwierigkeit | Impact | Empfehlung |
-|---|---|---|---|
-| `failed_assets` Bug | Sehr gering | Mittel | Sofort |
-| SigLIP2 statt CLIP | Sehr gering | Mittel | Nächste Session |
-| Brand Context aus Datei lesen | Sehr gering | Hoch | Nächste Session |
-| LibreFace AU-Intensität | Gering | Mittel | Bald |
-| MiroFish Persona-Prompts | Gering | Hoch | Bald |
-| Flash Attention aktivieren | Sehr gering | Hoch (Speed) | Bald |
-| Brand Research Agent | Mittel | Sehr hoch | MVP-Phase |
-| Final Report Agent (DeepSeek R1) | Mittel | Sehr hoch | MVP-Phase |
-| Dashboard (React + FastAPI) | Mittel | Hoch | MVP-Phase |
-| SalFoM statt ViNet-S | Gering | Mittel | Optional |
-| CLAP Audio-Emotion | Gering | Mittel | Optional |
-| TurboQuant KV-Cache | Niedrig (warten auf PR) | Hoch | Post-MVP |
-| Pipeline B (Generation) | Hoch | Hoch | Post-MVP |
-| KPI-Kalibrierung (XGBoost) | Mittel | Sehr hoch | Post-MVP |
+### tools/token_tracker.py
+- Primäre Quelle: ~/.lemonade_token_log.jsonl
+- Fallback: Lemonade /api/v1/stats
+- Alias: tokens (in ~/.bashrc)
+
+### Lemonade Proxy (tools/lemonade_proxy.py)
+- Port 9002 → 8888
+- Loggt ALLE Requests unabhängig vom Projekt
+- Service: ~/tools/lemonade-proxy.service
+
+---
+
+## Dashboard v2 Seitenstruktur
+
+1. Overview — Creative Performance Table (Kernfeature), Modul-Cards
+2. Brand Intelligence — Brand Profil, STORM Report Link, Märkte
+3. TRIBE Neural — 3D Brain (Three.js), 6 Metrik-Balken, AI Analyse
+4. MiroFish Social — Animiertes Agent-Netzwerk (D3.js), Sentiment Gauge
+5. CLIP Brand — Radar Chart (Recharts), Label Scores
+6. ViNet Attention — Heatmap, Product/Brand/CTA Attention
+7. Report & Ranking — Creative Ranking, Executive Summary, Export
+
+Design: Weiß/Schwarz, Inter + JetBrains Mono, Linear.app Aesthetic
+
+---
+
+## Offene Punkte
+
+### Sofort
+- [ ] Dashboard v2 Code aus Lovable in dashboard_v2/ übernehmen
+- [ ] Dashboard v2 echte Daten einlesen
+- [ ] GitHub Push (git add . → commit → push)
+- [ ] Lemonade Proxy testen und aktivieren
+
+### Kurzfristig
+- [ ] ViNet ROIs definieren für apple_vs_samsung Assets
+- [ ] Pipeline A mit yfood Creatives testen
+- [ ] Brand Research Nachtrun vollständig
+
+### Geplante Module-Upgrades (Post-MVP)
+| Aktuell | Ersatz | Grund |
+|---|---|---|
+| CLIP | SigLIP2 SO400M | Apache 2.0, besser, multilingual |
+| ViNet-S | SalFoM | State-of-the-Art Video Saliency |
+| - | LibreFace + OpenFace 2.0 | FACS/AU Intensity |
+| - | CLAP + Essentia | Audio Emotion |
+| - | Emotion-LLaMA | Multimodale Emotion (NeurIPS 2024) |
+| - | Qwen2.5-VL-7B | Ad Understanding |
+| - | IC9600 | Cognitive Load |
+| - | Detoxify + Marqo-NSFW | Brand Safety |
+
+### Langfristig
+- [ ] Supabase Migration (aktuell SQLite)
+- [ ] KPI Kalibrierung (CTR/ROAS/CPA Regression)
+- [ ] TurboQuant (Google ICLR 2026)
