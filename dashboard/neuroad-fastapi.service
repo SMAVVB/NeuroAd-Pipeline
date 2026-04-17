@@ -1,0 +1,19 @@
+[Unit]
+Description=NeuroAd Pipeline FastAPI Backend
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=vincent
+Group=vincent
+WorkingDirectory=/home/vincent/neuro_pipeline_project
+Environment="PATH=/home/vincent/neuro_pipeline_project/venv_rocm/bin"
+ExecStart=/home/vincent/neuro_pipeline_project/venv_rocm/bin/uvicorn dashboard.api.main:app --host 0.0.0.0 --port 8080 --reload
+Restart=always
+RestartSec=5
+StandardOutput=append:/home/vincent/neuro_pipeline_project/dashboard/api/logs/fastapi.log
+StandardError=append:/home/vincent/neuro_pipeline_project/dashboard/api/logs/fastapi-error.log
+
+[Install]
+WantedBy=multi-user.target
