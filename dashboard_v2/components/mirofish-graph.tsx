@@ -24,6 +24,8 @@ export interface EntityEdge {
   episodes?: string[]
   created_at?: string
   valid_at?: string
+  source_name?: string
+  target_name?: string
 }
 
 export interface GraphData {
@@ -75,14 +77,17 @@ interface NodeData {
   rawData: Entity
   x?: number
   y?: number
-  fx?: number
-  fy?: number
+  fx?: number | null
+  fy?: number | null
+  _dragStartX?: number
+  _dragStartY?: number
+  _isDragging?: boolean
 }
 
 // Edge data structure for D3
 interface EdgeData {
-  source: string
-  target: string
+  source: NodeData | string
+  target: NodeData | string
   type: string
   name: string
   curvature: number
@@ -289,39 +294,34 @@ export default function MiroFishGraph({
     const getColor = (type: string) => colorMap[type] || '#999'
 
     // Create simulation
-    const simulation = d3
-      .forceSimulation(nodes)
-      .force(
-        'link',
-        d3
-          .forceLink(edges)
-          .id((d) => d.id)
-          .distance((d) => {
-            const baseDistance = 150
-            const edgeCount = d.pairTotal || 1
-            return baseDistance + (edgeCount - 1) * 50
-          })
-      )
-      .force('charge', d3.forceManyBody().strength(-400))
-      .force('center', d3.forceCenter(width / 2, heightVal / 2))
-      .force('collide', d3.forceCollide(50))
-      .force('x', d3.forceX(width / 2).strength(0.04))
-      .force('y', d3.forceY(heightVal / 2).strength(0.04))
+    // Use any to bypass D3 v7's overly strict type constraints
+    const simulation = d3.forceSimulation(nodes as any)
+      .force('link', d3.forceLink(edges as any).id((d) => (d as NodeData).id).distance((d) => {
+        const baseDistance = 150
+        const edgeCount = (d as EdgeData).pairTotal || 1
+        return baseDistance + (edgeCount - 1) * 50
+      }) as any)
+      .force('charge', d3.forceManyBody() as any)
+      .force('center', d3.forceCenter(width / 2, heightVal / 2) as any)
+      .force('collide', d3.forceCollide(50) as any)
+      .force('x', d3.forceX(width / 2).strength(0.04) as any)
+      .force('y', d3.forceY(heightVal / 2).strength(0.04) as any)
 
     // Create SVG groups
     const g = svg.append('g')
 
     // Zoom
-    svg
-      .call(
-        d3
-          .zoom()
-          .extent([[0, 0], [width, heightVal]])
-          .scaleExtent([0.1, 4])
-          .on('zoom', (event) => {
-            g.attr('transform', event.transform)
-          })
-      )
+    const zoomed = (event: d3.D3ZoomEvent<SVGSVGElement, any>) => {
+      g.attr('transform', event.transform as any)
+    }
+
+    const zoomBehavior = d3
+      .zoom<SVGSVGElement, any>()
+      .extent([[0, 0], [width, heightVal]])
+      .scaleExtent([0.1, 4])
+      .on('zoom', zoomed)
+
+    svg.call(zoomBehavior)
       .on('click', () => {
         setSelectedItem(null)
       })
@@ -331,10 +331,13 @@ export default function MiroFishGraph({
 
     // Calculate link path
     const getLinkPath = (d: EdgeData): string => {
-      const sx = (d.source as NodeData).x || 0
-      const sy = (d.source as NodeData).y || 0
-      const tx = (d.target as NodeData).x || 0
-      const ty = (d.target as NodeData).y || 0
+      // D3 populates source/target with node objects during simulation
+      const sourceNode = d.source as NodeData
+      const targetNode = d.target as NodeData
+      const sx = sourceNode.x || 0
+      const sy = sourceNode.y || 0
+      const tx = targetNode.x || 0
+      const ty = targetNode.y || 0
 
       if (d.isSelfLoop) {
         const loopRadius = 30
@@ -365,10 +368,13 @@ export default function MiroFishGraph({
 
     // Calculate link midpoint
     const getLinkMidpoint = (d: EdgeData): { x: number; y: number } => {
-      const sx = (d.source as NodeData).x || 0
-      const sy = (d.source as NodeData).y || 0
-      const tx = (d.target as NodeData).x || 0
-      const ty = (d.target as NodeData).y || 0
+      // Get the actual node objects from the simulation
+      const sourceNode = d.source as NodeData
+      const targetNode = d.target as NodeData
+      const sx = sourceNode.x || 0
+      const sy = sourceNode.y || 0
+      const tx = targetNode.x || 0
+      const ty = targetNode.y || 0
 
       if (d.isSelfLoop) {
         return { x: sx + 70, y: sy }
@@ -476,9 +482,9 @@ export default function MiroFishGraph({
     // Nodes group
     const nodeGroup = g.append('g').attr('class', 'nodes')
 
-    // Node circles
+    // Node circles - use any to bypass D3 v7's overly strict type constraints
     const node = nodeGroup
-      .selectAll('circle')
+      .selectAll<SVGCircleElement, NodeData>('circle')
       .data(nodes)
       .enter()
       .append('circle')
@@ -488,18 +494,17 @@ export default function MiroFishGraph({
       .attr('stroke-width', 2.5)
       .style('cursor', 'pointer')
       .call(
-        d3
-          .drag()
-          .on('start', (event, d) => {
-            d.fx = d.x
-            d.fy = d.y
+        (d3.drag<SVGCircleElement, NodeData>() as any)
+          .on('start', (event: any, d: NodeData) => {
+            d.fx = d.x ?? null
+            d.fy = d.y ?? null
             d._dragStartX = event.x
             d._dragStartY = event.y
             d._isDragging = false
           })
-          .on('drag', (event, d) => {
-            const dx = event.x - (d._dragStartX || 0)
-            const dy = event.y - (d._dragStartY || 0)
+          .on('drag', (event: any, d: NodeData) => {
+            const dx = event.x - (d._dragStartX ?? 0)
+            const dy = event.y - (d._dragStartY ?? 0)
             const distance = Math.sqrt(dx * dx + dy * dy)
 
             if (!d._isDragging && distance > 3) {
@@ -512,14 +517,14 @@ export default function MiroFishGraph({
               d.fy = event.y
             }
           })
-          .on('end', (event, d) => {
+          .on('end', (event: any, d: NodeData) => {
             if (d._isDragging) {
               simulation.alphaTarget(0)
             }
             d.fx = null
             d.fy = null
             d._isDragging = false
-          })
+          }) as any
       )
       .on('click', (event, d) => {
         event.stopPropagation()
@@ -538,12 +543,16 @@ export default function MiroFishGraph({
         })
       })
       .on('mouseenter', (event, d) => {
-        if (!selectedItem || (selectedItem.type === 'node' && selectedItem.data.uuid !== d.rawData.uuid)) {
+        // Check if this is a node selection match
+        const isNodeMatch = selectedItem?.type === 'node' && 'uuid' in selectedItem.data && selectedItem.data.uuid !== d.rawData.uuid
+        if (!selectedItem || isNodeMatch) {
           d3.select(event.target).attr('stroke', '#333').attr('stroke-width', 3)
         }
       })
       .on('mouseleave', (event, d) => {
-        if (!selectedItem || (selectedItem.type === 'node' && selectedItem.data.uuid !== d.rawData.uuid)) {
+        // Check if this is a node selection match
+        const isNodeMatch = selectedItem?.type === 'node' && 'uuid' in selectedItem.data && selectedItem.data.uuid !== d.rawData.uuid
+        if (!selectedItem || isNodeMatch) {
           d3.select(event.target).attr('stroke', '#fff').attr('stroke-width', 2.5)
         }
       })

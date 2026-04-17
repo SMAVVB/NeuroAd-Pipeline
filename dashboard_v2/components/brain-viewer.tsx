@@ -2,7 +2,9 @@
 
 import { useRef, useEffect, useState } from 'react'
 import * as THREE from 'three'
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
+
+// OrbitControls type - imported dynamically at runtime
+type OrbitControls = any
 
 // ROI mapping based on neuroscientific knowledge
 // Mapping: neural_engagement→prefrontal, emotional_impact→TPJ, face_response→FFA, scene_response→PPA, motion_response→MT, language_engagement→Broca
@@ -52,7 +54,10 @@ const ROI_CONFIG = {
 }
 
 // ROI mapping from tribe scores to brain regions
-export const TRIBE_ROI_MAPPING: Record<string, keyof typeof ROI_CONFIG> = {
+const ROI_NAMES = ['prefrontal', 'tpj', 'ffa', 'ppa', 'mt', 'broca'] as const
+type ROIName = typeof ROI_NAMES[number]
+
+export const TRIBE_ROI_MAPPING: Record<string, ROIName> = {
   neural_engagement: 'prefrontal',
   emotional_impact: 'tpj',
   face_response: 'ffa',
@@ -83,9 +88,9 @@ interface BrainViewerProps {
 export function BrainViewer({ tribeScores, size = 'md' }: BrainViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const sceneRef = useRef<THREE.Scene | null>(null)
-  const brainMeshRef = useRef<THREE.Mesh | null>(null)
+  const brainGroupRef = useRef<THREE.Group | null>(null)
   const roiSpheresRef = useRef<THREE.Mesh[]>([])
-  const controlsRef = useRef<OrbitControls | null>(null)
+  const controlsRef = useRef<any | null>(null)
   const animationRef = useRef<number>()
   const isDraggingRef = useRef(false)
 
@@ -166,7 +171,7 @@ export function BrainViewer({ tribeScores, size = 'md' }: BrainViewerProps) {
     occipitalLobe.position.set(0, -0.1, 0.75)
     brainGroup.add(occipitalLobe)
 
-    brainMeshRef.current = brainGroup
+    brainGroupRef.current = brainGroup
 
     // Create ROI spheres
     Object.entries(ROI_CONFIG).forEach(([key, config]) => {
@@ -195,13 +200,18 @@ export function BrainViewer({ tribeScores, size = 'md' }: BrainViewerProps) {
       roiSpheresRef.current.push(sphere)
     })
 
-    // OrbitControls
-    const controls = new OrbitControls(camera, renderer.domElement)
-    controls.enableDamping = true
-    controls.dampingFactor = 0.05
-    controls.minDistance = 2
-    controls.maxDistance = 6
-    controlsRef.current = controls
+    // Dynamic import of OrbitControls
+    const loadAndInitControls = async () => {
+      const OrbitControls = (await import('three/examples/jsm/controls/OrbitControls' as any)).OrbitControls as any
+      const controls = new OrbitControls(camera, renderer.domElement)
+      controls.enableDamping = true
+      controls.dampingFactor = 0.05
+      controls.minDistance = 2
+      controls.maxDistance = 6
+      controlsRef.current = controls
+    }
+
+    loadAndInitControls()
 
     // Handle rotation
     let rotationSpeed = 0.002
@@ -215,7 +225,7 @@ export function BrainViewer({ tribeScores, size = 'md' }: BrainViewerProps) {
         brainGroup.rotation.y = targetRotationY
       }
 
-      controls.update()
+      controlsRef.current?.update(null)
       renderer.render(scene, camera)
     }
 
@@ -252,7 +262,6 @@ export function BrainViewer({ tribeScores, size = 'md' }: BrainViewerProps) {
       renderer.domElement.removeEventListener('touchend', handleDragEnd)
       renderer.domElement.removeEventListener('mouseleave', handleDragEnd)
       container.removeChild(renderer.domElement)
-      scene.dispose()
       renderer.dispose()
     }
   }, [])
@@ -260,14 +269,16 @@ export function BrainViewer({ tribeScores, size = 'md' }: BrainViewerProps) {
   // Update ROI colors based on scores
   useEffect(() => {
     roiSpheresRef.current.forEach(sphere => {
-      const roiKey = sphere.userData.roiKey as keyof typeof TRIBE_ROI_MAPPING
-      const scoreKey = TRIBE_ROI_MAPPING[roiKey]
+      const roiKey = sphere.userData.roiKey as string
+      const scoreKey = roiKey as keyof typeof tribeScores
       const score = tribeScores[scoreKey] ?? 0
       const color = getScoreColor(score)
 
-      sphere.material.color.set(color)
-      sphere.material.emissive.set(color)
-      sphere.material.emissiveIntensity = score > 0.18 ? 0.3 : 0.15
+      // Type assertion for MeshStandardMaterial
+      const material = sphere.material as THREE.MeshStandardMaterial
+      material.color.set(color)
+      material.emissive.set(color)
+      material.emissiveIntensity = score > 0.18 ? 0.3 : 0.15
     })
   }, [tribeScores])
 
