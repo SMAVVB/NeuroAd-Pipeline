@@ -10,6 +10,48 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { Trophy, Download, FileJson, Medal, CheckCircle, Lightbulb } from 'lucide-react'
 
+// Module types for scoring
+type ModuleScore = {
+  name: string
+  score: number
+  label: string
+}
+
+// Module types mapping
+const moduleTypes = ['tribe', 'mirofish', 'clip', 'vinet'] as const
+type ModuleType = typeof moduleTypes[number]
+
+// Helper to get module scores from a creative
+function getModuleScores(creative: any): ModuleScore[] {
+  return [
+    { name: 'tribe', score: creative.tribe.neural_engagement, label: 'TRIBE' },
+    { name: 'mirofish', score: creative.mirofish.social_score, label: 'MiroFish' },
+    { name: 'clip', score: creative.clip.brand_match_score, label: 'CLIP' },
+    { name: 'vinet', score: creative.vinet.mean_saliency, label: 'ViNet' },
+  ]
+}
+
+// Helper to get the best and weakest modules
+function getBestWeakestModules(scores: ModuleScore[]): { best: ModuleScore; weakest: ModuleScore } {
+  const sorted = [...scores].sort((a, b) => b.score - a.score)
+  return { best: sorted[0], weakest: sorted[sorted.length - 1] }
+}
+
+// Generate dynamic executive summary based on actual creative data
+function generateExecutiveSummary(creatives: any[]): string {
+  if (creatives.length === 0) return 'No creative data available for analysis.'
+
+  const ranked = [...creatives].sort((a, b) => b.overall_score - a.overall_score)
+  const winner = ranked[0]
+  const scores = getModuleScores(winner)
+  const { best, weakest } = getBestWeakestModules(scores)
+
+  // Format score as percentage
+  const formatScore = (s: number) => Math.round(s * 100).toString()
+
+  return `${winner.name} leads with ${formatScore(winner.overall_score)}% overall score. Strongest module: ${best.label} (${formatScore(best.score)}%). Weakest module: ${weakest.label} (${formatScore(weakest.score)}%).`
+}
+
 function ReportContent() {
   const { availableCreatives, selectedCampaign } = useDashboard()
 
@@ -25,6 +67,9 @@ function ReportContent() {
   const rankedCreatives = [...availableCreatives].sort((a, b) => b.overall_score - a.overall_score)
   const winner = rankedCreatives[0]
 
+  // Generate dynamic executive summary
+  const executiveSummary = generateExecutiveSummary(availableCreatives)
+
   const handleExportPDF = () => {
     alert('PDF export would be generated here with full report data')
   }
@@ -33,6 +78,7 @@ function ReportContent() {
     const data = {
       campaign: selectedCampaign,
       creatives: rankedCreatives,
+      executiveSummary,
       analysis: aiAnalysis.consolidated,
       exportedAt: new Date().toISOString(),
     }
@@ -140,7 +186,7 @@ function ReportContent() {
           <div>
             <h4 className="font-medium mb-2">Executive Summary</h4>
             <p className="text-muted-foreground leading-relaxed">
-              {aiAnalysis.consolidated.executiveSummary}
+              {executiveSummary}
             </p>
           </div>
 
