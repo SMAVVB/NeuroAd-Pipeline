@@ -58,9 +58,9 @@ export function transformPipelineData(rawData: any[]): Creative[] {
     // Transform tribe data - check both direct tribe object and composite.breakdown
     const tribeNested = item.tribe || {}
     const compositeBreakdown = item.composite?.breakdown || {}
-    // Use composite.breakdown if available, fall back to tribe object
+    // Use composite.breakdown if available (has neural_engagement, emotional_impact, etc.)
+    // Otherwise fall back to tribe object
     const tribeData = compositeBreakdown.neural_engagement !== undefined ? compositeBreakdown : tribeNested
-    const tribeScore = tribeData.neural_engagement ?? 0
 
     // Use composite.total_score if available, otherwise calculate weighted score
     // Overall = TRIBE 30% + MiroFish 40% + CLIP 15% + ViNet 15%
@@ -69,7 +69,7 @@ export function transformPipelineData(rawData: any[]): Creative[] {
       overallScore = item.composite.total_score
     } else {
       overallScore =
-        tribeScore * 0.30 +
+        (tribeData.neural_engagement ?? 0) * 0.30 +
         mirofishScore * 0.40 +
         clipScore * 0.15 +
         vinetScore * 0.15
@@ -84,13 +84,13 @@ export function transformPipelineData(rawData: any[]): Creative[] {
       campaignId: campaignId,
       tribe: {
         neural_engagement: tribeData.neural_engagement ?? 0,
-        emotional_impact: (tribeData.emotional_impact ?? tribeNested.emotional_impact ?? compositeBreakdown.emotional_impact) ?? 0,
-        face_response: (tribeData.face_response ?? tribeNested.face_response ?? compositeBreakdown.facial_emotion) ?? 0,
-        scene_response: (tribeData.scene_response ?? tribeNested.scene_response ?? 0) ?? 0,
-        motion_response: (tribeData.motion_response ?? tribeNested.motion_response ?? 0) ?? 0,
-        language_engagement: (tribeData.language_engagement ?? tribeNested.language_engagement ?? 0) ?? 0,
+        emotional_impact: tribeData.emotional_impact ?? 0,
+        face_response: tribeData.face_response ?? tribeData.facial_emotion ?? 0,
+        scene_response: tribeData.scene_response ?? 0,
+        motion_response: tribeData.motion_response ?? 0,
+        language_engagement: tribeData.language_engagement ?? 0,
         temporal_peak: typeof tribeNested.temporal_peak === 'number' ? `${Math.round(tribeNested.temporal_peak)}/36` : '0/36',
-        engagement_stability: (tribeData.engagement_stability ?? tribeNested.engagement_stability ?? 0) ?? 0,
+        engagement_stability: tribeData.engagement_stability ?? tribeNested.engagement_stability ?? 0.5,
       },
       mirofish: {
         positive_sentiment: mirofishData.positive_sentiment ?? 0,

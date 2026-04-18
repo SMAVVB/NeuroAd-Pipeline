@@ -7,45 +7,47 @@ import * as THREE from 'three'
 type OrbitControls = any
 
 // ROI mapping based on neuroscientific knowledge
-// Mapping: neural_engagement→prefrontal, emotional_impact→TPJ, face_response→FFA, scene_response→PPA, motion_response→MT, language_engagement→Broca
+// Mapping per issue requirements:
+// neural_engagement→prefrontal, emotional_impact→limbic, face_response→temporal,
+// scene_response→occipital, motion_response→MT, language_engagement→frontal
 const ROI_CONFIG = {
   prefrontal: {
     name: 'Prefrontal Cortex',
     color: '#3b82f6', // blue
-    position: { x: 0, y: 0.6, z: 0.2 },
-    scale: { x: 0.35, y: 0.25, z: 0.3 },
+    position: { x: 0, y: 0.5, z: 0.3 },
+    scale: { x: 0.3, y: 0.25, z: 0.25 },
     label: 'Neural Engagement',
   },
-  tpj: {
-    name: 'TPJ',
+  limbic: {
+    name: 'Limbic System',
     color: '#3b82f6', // blue
-    position: { x: 0.35, y: 0.1, z: 0.2 },
-    scale: { x: 0.2, y: 0.2, z: 0.2 },
+    position: { x: 0, y: 0, z: 0.1 },
+    scale: { x: 0.25, y: 0.2, z: 0.2 },
     label: 'Emotional Impact',
   },
-  ffa: {
-    name: 'FFA',
+  temporal: {
+    name: 'Temporal Lobe',
     color: '#3b82f6', // blue
-    position: { x: 0.35, y: -0.1, z: 0.5 },
-    scale: { x: 0.2, y: 0.2, z: 0.2 },
+    position: { x: 0.4, y: -0.1, z: 0.4 },
+    scale: { x: 0.25, y: 0.2, z: 0.25 },
     label: 'Face Response',
   },
-  ppa: {
-    name: 'PPA',
+  occipital: {
+    name: 'Occipital Lobe',
     color: '#3b82f6', // blue
-    position: { x: -0.35, y: -0.1, z: 0.5 },
-    scale: { x: 0.2, y: 0.2, z: 0.2 },
+    position: { x: 0, y: -0.2, z: 0.6 },
+    scale: { x: 0.25, y: 0.2, z: 0.25 },
     label: 'Scene Response',
   },
   mt: {
-    name: 'MT',
+    name: 'MT Area',
     color: '#3b82f6', // blue
-    position: { x: -0.3, y: -0.3, z: 0.4 },
+    position: { x: -0.3, y: -0.25, z: 0.5 },
     scale: { x: 0.2, y: 0.2, z: 0.2 },
     label: 'Motion Response',
   },
-  broca: {
-    name: 'Broca Area',
+  frontal: {
+    name: 'Frontal Lobe',
     color: '#3b82f6', // blue
     position: { x: 0, y: -0.1, z: 0.8 },
     scale: { x: 0.25, y: 0.15, z: 0.2 },
@@ -54,16 +56,16 @@ const ROI_CONFIG = {
 }
 
 // ROI mapping from tribe scores to brain regions
-const ROI_NAMES = ['prefrontal', 'tpj', 'ffa', 'ppa', 'mt', 'broca'] as const
+const ROI_NAMES = ['prefrontal', 'limbic', 'temporal', 'occipital', 'mt', 'frontal'] as const
 type ROIName = typeof ROI_NAMES[number]
 
 export const TRIBE_ROI_MAPPING: Record<string, ROIName> = {
   neural_engagement: 'prefrontal',
-  emotional_impact: 'tpj',
-  face_response: 'ffa',
-  scene_response: 'ppa',
+  emotional_impact: 'limbic',
+  face_response: 'temporal',
+  scene_response: 'occipital',
   motion_response: 'mt',
-  language_engagement: 'broca',
+  language_engagement: 'frontal',
 }
 
 function getScoreColor(score: number): string {
