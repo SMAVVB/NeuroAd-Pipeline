@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/collapsible'
 import { ChevronDown } from 'lucide-react'
 import { useState, useEffect } from 'react'
-import MiroFishGraph, { type GraphData } from '@/components/mirofish-graph'
+import MiroFishGraph, { type GraphData, type Entity, type EntityEdge } from '@/components/mirofish-graph'
 
 function GaugeChart({ value, label, max = 1 }: { value: number; label: string; max?: number }) {
   const percentage = (value / max) * 100
@@ -64,11 +64,109 @@ function GaugeChart({ value, label, max = 1 }: { value: number; label: string; m
   )
 }
 
+// Generate fallback graph nodes from sentiment data
+function generateFallbackGraphData(creativeName: string, mirofishData: any): GraphData {
+  const virality = mirofishData?.virality_score ?? 0
+  const positiveSentiment = mirofishData?.positive_sentiment ?? 0
+  const controversyRisk = mirofishData?.controversy_risk ?? 0
+  const socialScore = mirofishData?.social_score ?? 0
+
+  // Determine sentiment color based on positive sentiment score
+  const getSentimentColor = (score: number) => {
+    if (score >= 0.7) return '#10b981' // green - positive
+    if (score <= 0.3) return '#ef4444' // red - negative
+    return '#6b7280' // gray - neutral
+  }
+
+  // Create entity nodes based on sentiment metrics
+  const entities: Entity[] = [
+    {
+      uuid: 'node-1',
+      name: 'Positive Sentiment',
+      labels: ['Metric'],
+      attributes: { score: positiveSentiment.toFixed(2), type: 'sentiment' },
+      summary: 'Audience positive reaction score',
+      created_at: new Date().toISOString(),
+    },
+    {
+      uuid: 'node-2',
+      name: 'Virality Potential',
+      labels: ['Metric'],
+      attributes: { score: virality.toFixed(2), type: 'virality' },
+      summary: 'Likelihood of content going viral',
+      created_at: new Date().toISOString(),
+    },
+    {
+      uuid: 'node-3',
+      name: 'Controversy Risk',
+      labels: ['Metric'],
+      attributes: { score: controversyRisk.toFixed(2), type: 'risk' },
+      summary: 'Potential for negative backlash',
+      created_at: new Date().toISOString(),
+    },
+    {
+      uuid: 'node-4',
+      name: 'Social Engagement',
+      labels: ['Metric'],
+      attributes: { score: socialScore.toFixed(2), type: 'engagement' },
+      summary: 'Overall social media engagement score',
+      created_at: new Date().toISOString(),
+    },
+    {
+      uuid: 'node-5',
+      name: 'Target Audience',
+      labels: ['Demographic'],
+      attributes: { size: '10M+', type: 'audience' },
+      summary: 'Primary audience segment',
+      created_at: new Date().toISOString(),
+    },
+    {
+      uuid: 'node-6',
+      name: 'Brand Mentions',
+      labels: ['Brand'],
+      attributes: { count: Math.round(virality * 1000), type: 'mentions' },
+      summary: 'Estimated brand mentions',
+      created_at: new Date().toISOString(),
+    },
+    {
+      uuid: 'node-7',
+      name: 'User Generated Content',
+      labels: ['Content'],
+      attributes: { potential: virality > 0.6 ? 'High' : 'Medium', type: 'ugc' },
+      summary: 'UGC generation potential',
+      created_at: new Date().toISOString(),
+    },
+    {
+      uuid: 'node-8',
+      name: 'Shareability',
+      labels: ['Metric'],
+      attributes: { score: (socialScore * 0.8).toFixed(2), type: 'shareability' },
+      summary: 'Content shareability score',
+      created_at: new Date().toISOString(),
+    },
+  ]
+
+  // Create edges based on relationships
+  const edges: EntityEdge[] = [
+    { uuid: 'edge-1', source_node_uuid: 'node-1', target_node_uuid: 'node-4', name: 'Drives', fact_type: 'RELATES_TO' },
+    { uuid: 'edge-2', source_node_uuid: 'node-2', target_node_uuid: 'node-4', name: 'Contributes', fact_type: 'RELATES_TO' },
+    { uuid: 'edge-3', source_node_uuid: 'node-3', target_node_uuid: 'node-4', name: 'Affects', fact_type: 'RELATES_TO' },
+    { uuid: 'edge-4', source_node_uuid: 'node-1', target_node_uuid: 'node-5', name: 'Targets', fact_type: 'RELATES_TO' },
+    { uuid: 'edge-5', source_node_uuid: 'node-2', target_node_uuid: 'node-6', name: 'Generates', fact_type: 'RELATES_TO' },
+    { uuid: 'edge-6', source_node_uuid: 'node-4', target_node_uuid: 'node-7', name: 'Enables', fact_type: 'RELATES_TO' },
+    { uuid: 'edge-7', source_node_uuid: 'node-1', target_node_uuid: 'node-8', name: 'Improves', fact_type: 'RELATES_TO' },
+    { uuid: 'edge-8', source_node_uuid: 'node-3', target_node_uuid: 'node-8', name: 'Reduces', fact_type: 'RELATES_TO' },
+  ]
+
+  return { nodes: entities, edges }
+}
+
 function MiroFishContent() {
   const { availableCreatives, selectedCreativeId, setSelectedCreativeId } = useDashboard()
   const [isExplainerOpen, setIsExplainerOpen] = useState(false)
   const [graphData, setGraphData] = useState<GraphData | undefined>(undefined)
   const [loadingGraph, setLoadingGraph] = useState(false)
+  const [hasGraphError, setHasGraphError] = useState(false)
 
   const selectedCreative = availableCreatives.find(c => c.id === selectedCreativeId) || availableCreatives[0]
 
@@ -85,13 +183,21 @@ function MiroFishContent() {
     const fetchGraphData = async () => {
       try {
         setLoadingGraph(true)
+        setHasGraphError(false)
         const response = await fetch(`/api/campaigns/${selectedCreative.name}/mirofish`)
         if (response.ok) {
           const data = await response.json()
           setGraphData(data)
+        } else {
+          // FastAPI returned error - use fallback data
+          setHasGraphError(true)
+          setGraphData(generateFallbackGraphData(selectedCreative.name, selectedCreative.mirofish))
         }
       } catch (error) {
         console.error('Failed to fetch graph data:', error)
+        // Network error - use fallback data
+        setHasGraphError(true)
+        setGraphData(generateFallbackGraphData(selectedCreative.name, selectedCreative.mirofish))
       } finally {
         setLoadingGraph(false)
       }
@@ -150,8 +256,13 @@ function MiroFishContent() {
 
       {/* MiroFish Graph Visualization */}
       <Card className="mb-6">
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">Entity Relationship Graph</CardTitle>
+          {hasGraphError && (
+            <span className="text-xs px-2 py-1 bg-amber-100 text-amber-700 rounded-full">
+              Fallback Data
+            </span>
+          )}
         </CardHeader>
         <CardContent className="h-[600px]">
           <MiroFishGraph graphData={graphData} loading={loadingGraph} height={600} />
