@@ -90,7 +90,10 @@ def get_brand_report_path(campaign_name: str) -> Path | None:
 
 
 def get_brand_profile_path(campaign_name: str) -> Path | None:
-    """Get path to brand_profile.json for a campaign."""
+    """Get path to brand_profile.json for a campaign.
+
+    Also checks brand_context.txt as fallback for campaign metadata.
+    """
     # Check reports/ folder first
     reports_dir = CAMPAIGNS_DIR / campaign_name / "reports"
     if reports_dir.exists():
@@ -111,6 +114,11 @@ def get_brand_profile_path(campaign_name: str) -> Path | None:
                 profile_path = campaign_dir / "brand_profile.json"
                 if profile_path.exists():
                     return profile_path
+
+    # Fallback: brand_context.txt contains campaign metadata
+    brand_context = CAMPAIGNS_DIR / campaign_name / "brand_context.txt"
+    if brand_context.exists():
+        return brand_context
 
     return None
 
@@ -171,7 +179,10 @@ async def get_brand_report(campaign_name: str) -> dict[str, Any]:
 
 @app.get("/api/campaigns/{campaign_name}/brand-profile")
 async def get_brand_profile(campaign_name: str) -> dict[str, Any]:
-    """Get brand_profile.json for a campaign."""
+    """Get brand_profile.json for a campaign.
+
+    Falls back to brand_context.txt if brand_profile.json doesn't exist.
+    """
     profile_path = get_brand_profile_path(campaign_name)
 
     if profile_path is None:
@@ -181,6 +192,17 @@ async def get_brand_profile(campaign_name: str) -> dict[str, Any]:
         )
 
     try:
+        # Handle brand_context.txt (plain text) vs brand_profile.json (JSON)
+        if profile_path.suffix == ".txt":
+            with open(profile_path, "r") as f:
+                content = f.read()
+            return {
+                "filename": profile_path.name,
+                "path": str(profile_path),
+                "type": "brand_context",
+                "content": content
+            }
+        # JSON file
         with open(profile_path, "r") as f:
             data = json.load(f)
         return data
