@@ -93,7 +93,7 @@ export function BrainViewer({ tribeScores, size = 'md' }: BrainViewerProps) {
   const brainGroupRef = useRef<THREE.Group | null>(null)
   const roiSpheresRef = useRef<THREE.Mesh[]>([])
   const controlsRef = useRef<any | null>(null)
-  const animationRef = useRef<number>()
+  const animationRef = useRef<number | undefined>(undefined)
   const isDraggingRef = useRef(false)
 
   // Create stylized brain using geometries
