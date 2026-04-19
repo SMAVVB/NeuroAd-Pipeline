@@ -123,16 +123,7 @@ function MiroFishContent() {
   const [graphData, setGraphData] = useState<GraphData | undefined>(undefined)
   const [loadingGraph, setLoadingGraph] = useState(false)
   const [hasGraphError, setHasGraphError] = useState(false)
-
-  const selectedCreative = availableCreatives.find(c => c.id === selectedCreativeId) || availableCreatives[0]
-
-  if (!selectedCreative) {
-    return (
-      <div className="flex items-center justify-center h-[60vh] text-muted-foreground">
-        Please select a campaign with creatives
-      </div>
-    )
-  }
+  const [selectedCreative, setSelectedCreative] = useState<typeof availableCreatives[0] | null>(null)
 
   // Fetch MiroFish graph data
   useEffect(() => {
@@ -140,33 +131,58 @@ function MiroFishContent() {
       try {
         setLoadingGraph(true)
         setHasGraphError(false)
-        const response = await fetch(`/api/campaigns/${selectedCreative.name}/mirofish`)
+        const response = await fetch(`/api/campaigns/${selectedCreative?.name}/mirofish`)
         if (response.ok) {
           const data = await response.json()
           setGraphData(data)
         } else {
           // FastAPI returned error - use generated agent data
           setHasGraphError(true)
-          setGraphData(generateAgentGraphData(selectedCreative.mirofish))
+          setGraphData(generateAgentGraphData(selectedCreative?.mirofish || {}))
         }
       } catch (error) {
         console.error('Failed to fetch graph data:', error)
         // Network error - use generated agent data
         setHasGraphError(true)
-        setGraphData(generateAgentGraphData(selectedCreative.mirofish))
+        setGraphData(generateAgentGraphData(selectedCreative?.mirofish || {}))
       } finally {
         setLoadingGraph(false)
       }
     }
 
-    fetchGraphData()
-  }, [selectedCreative.name])
+    if (selectedCreative) {
+      fetchGraphData()
+    }
+  }, [selectedCreative?.name])
 
   const sentimentMetrics = [
-    { label: 'Target Audience Match', value: selectedCreative.mirofish.target_audience_match },
-    { label: 'Emotional Resonance', value: selectedCreative.mirofish.emotional_resonance },
-    { label: 'Shareability', value: selectedCreative.mirofish.shareability },
-    { label: 'Brand Affinity', value: selectedCreative.mirofish.brand_affinity },
+    { label: 'Target Audience Match', value: selectedCreative?.mirofish.target_audience_match || 0 },
+    { label: 'Emotional Resonance', value: selectedCreative?.mirofish.emotional_resonance || 0 },
+    { label: 'Shareability', value: selectedCreative?.mirofish.shareability || 0 },
+    { label: 'Brand Affinity', value: selectedCreative?.mirofish.brand_affinity || 0 },
+  ]
+
+  const creative = availableCreatives.find(c => c.id === selectedCreativeId) || availableCreatives[0]
+
+  if (!creative) {
+    return (
+      <div className="flex items-center justify-center h-[60vh] text-muted-foreground">
+        Please select a campaign with creatives
+      </div>
+    )
+  }
+
+  // Update selectedCreative state when creative changes
+  useEffect(() => {
+    setSelectedCreative(creative)
+  }, [creative])
+
+  // Define sentimentMetrics after selectedCreative is set
+  const metrics = [
+    { label: 'Target Audience Match', value: selectedCreative?.mirofish.target_audience_match || 0 },
+    { label: 'Emotional Resonance', value: selectedCreative?.mirofish.emotional_resonance || 0 },
+    { label: 'Shareability', value: selectedCreative?.mirofish.shareability || 0 },
+    { label: 'Brand Affinity', value: selectedCreative?.mirofish.brand_affinity || 0 },
   ]
 
   return (
@@ -239,7 +255,7 @@ function MiroFishContent() {
 
           {/* Metric bars */}
           <div className="grid gap-4 md:grid-cols-2">
-            {sentimentMetrics.map((metric) => (
+            {metrics.map((metric) => (
               <MetricBar
                 key={metric.label}
                 label={metric.label}

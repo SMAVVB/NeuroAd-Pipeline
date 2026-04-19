@@ -56,10 +56,9 @@ export function transformPipelineData(rawData: any[]): Creative[] {
     const vinetData = item.vinet || item.saliency || {}
     const vinetScore = vinetData.mean_saliency ?? vinetData.brand_attention ?? 0
 
-    // Transform tribe data - use composite.breakdown if available
+    // Transform tribe data - read directly from item.tribe, NOT from composite.breakdown
     const tribeNested = item.tribe || {}
     const compositeBreakdown = item.composite?.breakdown || {}
-    const tribeData = compositeBreakdown.neural_engagement !== undefined ? compositeBreakdown : tribeNested
 
     // Use composite.total_score if available, otherwise calculate weighted score
     // Overall = TRIBE 30% + MiroFish 40% + CLIP 15% + ViNet 15%
@@ -68,7 +67,7 @@ export function transformPipelineData(rawData: any[]): Creative[] {
       overallScore = item.composite.total_score
     } else {
       overallScore =
-        (tribeData.neural_engagement ?? 0) * 0.30 +
+        (tribeNested.neural_engagement ?? 0) * 0.30 +
         (mirofishData.positive_sentiment ?? 0) * 0.40 +
         clipScore * 0.15 +
         vinetScore * 0.15
@@ -77,18 +76,17 @@ export function transformPipelineData(rawData: any[]): Creative[] {
     // Determine campaign_id from item or derive from asset_path
     const campaignId = item.campaign_id || item.campaignName || 'default'
 
-    // Map composite.breakdown fields to Creative type
-    // neural_engagement, emotional_impact, facial_emotion from breakdown
-    // visual_attention -> scene_response + motion_response (split)
-    // social_sentiment -> social_score for mirofish
-    // audio_engagement -> language_engagement
+    // Map tribe fields directly to Creative type
+    // scene_response, motion_response, language_engagement come from item.tribe directly
+    // composite.breakdown has: neural_engagement, emotional_impact, visual_attention, brand_consistency, social_sentiment, audio_engagement
 
-    const neuralEngagement = tribeData.neural_engagement ?? 0
-    const emotionalImpact = tribeData.emotional_impact ?? 0
-    const facialEmotion = tribeData.facial_emotion ?? tribeData.face_response ?? 0
-    const visualAttention = tribeData.visual_attention ?? 0
-    const socialSentiment = tribeData.social_sentiment ?? mirofishData.positive_sentiment ?? 0
-    const audioEngagement = tribeData.audio_engagement ?? 0
+    const neuralEngagement = tribeNested.neural_engagement ?? compositeBreakdown.neural_engagement ?? 0
+    const emotionalImpact = tribeNested.emotional_impact ?? compositeBreakdown.emotional_impact ?? 0
+    const facialEmotion = tribeNested.face_response ?? tribeNested.facial_emotion ?? 0
+    const sceneResponse = tribeNested.scene_response ?? (compositeBreakdown.visual_attention ?? 0) * 0.6
+    const motionResponse = tribeNested.motion_response ?? (compositeBreakdown.visual_attention ?? 0) * 0.4
+    const languageEngagement = tribeNested.language_engagement ?? compositeBreakdown.audio_engagement ?? 0
+    const socialSentiment = compositeBreakdown.social_sentiment ?? mirofishData.positive_sentiment ?? 0
 
     return {
       id: assetId,
@@ -98,11 +96,13 @@ export function transformPipelineData(rawData: any[]): Creative[] {
         neural_engagement: neuralEngagement,
         emotional_impact: emotionalImpact,
         face_response: facialEmotion,
-        scene_response: visualAttention * 0.6, // Split visual attention
-        motion_response: visualAttention * 0.4,
-        language_engagement: audioEngagement,
-        temporal_peak: typeof tribeNested.temporal_peak === 'number' ? `${Math.round(tribeNested.temporal_peak)}/36` : '0/36',
-        engagement_stability: tribeData.engagement_stability ?? tribeNested.engagement_stability ?? 0.5,
+        scene_response: sceneResponse,
+        motion_response: motionResponse,
+        language_engagement: languageEngagement,
+        temporal_peak: tribeNested.temporal_peak && tribeNested.n_segments
+          ? `${Math.round(tribeNested.temporal_peak)}/${tribeNested.n_segments}`
+          : '0/36',
+        engagement_stability: tribeNested.engagement_stability ?? compositeBreakdown.engagement_stability ?? 0.5,
       },
       mirofish: {
         positive_sentiment: mirofishData.positive_sentiment ?? 0,
