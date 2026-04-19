@@ -42,6 +42,13 @@ interface BrandResearch {
   historical_periods: Array<{ label: string; from_year: number; to_year: number; priority: string }>
   query_volume?: { pillars: number; queries_per_pillar: number; social_depth: string }
   validation_notes?: string
+  _source_file?: {
+    filename: string
+    path: string
+    type: string
+    last_modified: number
+    last_modified_iso: string
+  }
 }
 
 function BrandIntelligenceContent() {
@@ -52,6 +59,7 @@ function BrandIntelligenceContent() {
   const [isLoadingResearch, setIsLoadingResearch] = useState(false)
   const [isReportModalOpen, setIsReportModalOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [lastResearchRun, setLastResearchRun] = useState<string | null>(null)
 
   // Existing brand data from lib/data.ts (fallback when API unavailable)
   const existingBrand = selectedBrandId ? brandIntelligence[selectedBrandId as keyof typeof brandIntelligence] : null
@@ -69,6 +77,10 @@ function BrandIntelligenceContent() {
         if (response.ok) {
           const data = await response.json()
           setBrandReport(data)
+          // Extract last modified date from response if available
+          if (data.last_modified || data.last_modified_iso) {
+            setLastResearchRun(data.last_modified_iso || new Date(data.last_modified * 1000).toISOString())
+          }
         }
       } catch (err) {
         console.error('Failed to fetch brand report:', err)
@@ -94,6 +106,10 @@ function BrandIntelligenceContent() {
         if (response.ok) {
           const data: BrandResearch = await response.json()
           setBrandResearch(data)
+          // Extract last modified date from response if available
+          if (data._source_file?.last_modified || data._source_file?.last_modified_iso) {
+            setLastResearchRun(data._source_file.last_modified_iso || new Date(data._source_file.last_modified * 1000).toISOString())
+          }
         }
       } catch (err) {
         console.error('Failed to fetch brand research:', err)
@@ -107,6 +123,9 @@ function BrandIntelligenceContent() {
 
   // Check if brand profile exists in campaigns directory
   const hasBrandProfile = selectedBrandId && brandIntelligence[selectedBrandId as keyof typeof brandIntelligence]
+
+  // Helper to determine if we should show STORM Report hint
+  const showStormReportHint = !brandResearch && brandReport
 
   return (
     <>
@@ -131,23 +150,23 @@ function BrandIntelligenceContent() {
             <div>
               <span className="text-sm text-muted-foreground">Founded</span>
               <p className="font-mono font-medium text-lg">
-                {brandResearch ? `Year ${brandResearch.founding_year}` : existingBrand?.foundingYear || 'N/A'}
+                {brandResearch ? `Year ${brandResearch.founding_year}` : existingBrand?.foundingYear || (brandReport ? 'See STORM Report' : 'N/A')}
               </p>
             </div>
             <div>
               <span className="text-sm text-muted-foreground">Headquarters</span>
-              <p className="font-medium">{existingBrand?.headquarters || 'N/A'}</p>
+              <p className="font-medium">{existingBrand?.headquarters || (brandReport ? 'See STORM Report' : 'N/A')}</p>
             </div>
             <div>
               <span className="text-sm text-muted-foreground">Industry</span>
               <p className="font-medium">
-                {brandResearch?.industry || existingBrand?.industry || 'N/A'}
+                {brandResearch?.industry || existingBrand?.industry || (brandReport ? 'See STORM Report' : 'N/A')}
               </p>
             </div>
             <div>
               <span className="text-sm text-muted-foreground">Size</span>
               <p className="font-medium">
-                {brandResearch?.size || existingBrand?.size || 'N/A'}
+                {brandResearch?.size || existingBrand?.size || (brandReport ? 'See STORM Report' : 'N/A')}
               </p>
             </div>
           </div>
@@ -162,7 +181,7 @@ function BrandIntelligenceContent() {
               <Globe className="h-5 w-5 text-muted-foreground" />
               <div>
                 <p className="text-3xl font-mono font-semibold">
-                  {brandResearch ? brandResearch.primary_markets.length : existingBrand?.markets.length || 0}
+                  {brandResearch ? brandResearch.primary_markets.length : existingBrand?.markets.length || (brandReport ? 0 : 0)}
                 </p>
                 <p className="text-sm text-muted-foreground">Active Markets</p>
               </div>
@@ -175,7 +194,7 @@ function BrandIntelligenceContent() {
               <Users className="h-5 w-5 text-muted-foreground" />
               <div>
                 <p className="text-3xl font-mono font-semibold">
-                  {brandResearch ? brandResearch.key_competitors.length : existingBrand?.competitors.length || 0}
+                  {brandResearch ? brandResearch.key_competitors.length : existingBrand?.competitors.length || (brandReport ? 0 : 0)}
                 </p>
                 <p className="text-sm text-muted-foreground">Key Competitors</p>
               </div>
@@ -188,7 +207,7 @@ function BrandIntelligenceContent() {
               <Building2 className="h-5 w-5 text-muted-foreground" />
               <div>
                 <p className="text-3xl font-mono font-semibold">
-                  {brandResearch ? brandResearch.sub_industries.length : existingBrand?.subIndustries.length || 0}
+                  {brandResearch ? brandResearch.sub_industries.length : existingBrand?.subIndustries.length || (brandReport ? 0 : 0)}
                 </p>
                 <p className="text-sm text-muted-foreground">Sub-Industries</p>
               </div>
@@ -207,6 +226,16 @@ function BrandIntelligenceContent() {
             </CardTitle>
           </CardHeader>
           <CardContent>
+            {showStormReportHint ? (
+              <div className="py-8 text-center text-muted-foreground">
+                <p>Historical data available in STORM Report</p>
+                <p className="text-sm mt-2">View the full report for detailed historical context</p>
+              </div>
+            ) : (brandResearch?.historical_periods || existingBrand?.historicalPeriods || []).length === 0 ? (
+              <div className="py-8 text-center text-muted-foreground">
+                No historical periods configured
+              </div>
+            ) : (
             <div className="relative">
               <div className="absolute left-2 top-0 bottom-0 w-0.5 bg-border" />
               <div className="space-y-4">
@@ -223,6 +252,7 @@ function BrandIntelligenceContent() {
                 ))}
               </div>
             </div>
+            )}
           </CardContent>
         </Card>
 
@@ -233,6 +263,15 @@ function BrandIntelligenceContent() {
               <CardTitle className="text-base">Markets</CardTitle>
             </CardHeader>
             <CardContent>
+              {showStormReportHint ? (
+                <div className="py-4 text-center text-muted-foreground">
+                  <p>Market data available in STORM Report</p>
+                </div>
+              ) : (brandResearch?.primary_markets || existingBrand?.markets || []).length === 0 ? (
+                <div className="py-4 text-center text-muted-foreground">
+                  No markets configured
+                </div>
+              ) : (
               <div className="flex flex-wrap gap-2">
                 {(brandResearch?.primary_markets || existingBrand?.markets || []).map((market: any, i: number) => (
                   <Badge key={i} variant="secondary">
@@ -240,6 +279,7 @@ function BrandIntelligenceContent() {
                   </Badge>
                 ))}
               </div>
+              )}
             </CardContent>
           </Card>
 
@@ -248,11 +288,21 @@ function BrandIntelligenceContent() {
               <CardTitle className="text-base">Key Competitors</CardTitle>
             </CardHeader>
             <CardContent>
+              {showStormReportHint ? (
+                <div className="py-4 text-center text-muted-foreground">
+                  <p>Competitor data available in STORM Report</p>
+                </div>
+              ) : (brandResearch?.key_competitors || existingBrand?.competitors || []).length === 0 ? (
+                <div className="py-4 text-center text-muted-foreground">
+                  No competitors configured
+                </div>
+              ) : (
               <div className="flex flex-wrap gap-2">
                 {(brandResearch?.key_competitors || existingBrand?.competitors || []).map((competitor: string) => (
                   <Badge key={competitor} variant="outline">{competitor}</Badge>
                 ))}
               </div>
+              )}
             </CardContent>
           </Card>
 
@@ -261,11 +311,21 @@ function BrandIntelligenceContent() {
               <CardTitle className="text-base">Sub-Industries</CardTitle>
             </CardHeader>
             <CardContent>
+              {showStormReportHint ? (
+                <div className="py-4 text-center text-muted-foreground">
+                  <p>Sub-industry data available in STORM Report</p>
+                </div>
+              ) : (brandResearch?.sub_industries || existingBrand?.subIndustries || []).length === 0 ? (
+                <div className="py-4 text-center text-muted-foreground">
+                  No sub-industries configured
+                </div>
+              ) : (
               <div className="flex flex-wrap gap-2">
                 {(brandResearch?.sub_industries || existingBrand?.subIndustries || []).map((sub: string) => (
                   <Badge key={sub} variant="secondary">{sub}</Badge>
                 ))}
               </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -292,6 +352,15 @@ function BrandIntelligenceContent() {
                 </Button>
               )}
             </div>
+            {/* Last research run date */}
+            {(lastResearchRun || (brandResearch?._source_file?.last_modified_iso)) && (
+              <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                <Calendar className="h-3 w-3" />
+                <span>
+                  Last research run: {new Date(lastResearchRun || brandResearch!._source_file!.last_modified_iso!).toLocaleDateString()}
+                </span>
+              </div>
+            )}
           </CardHeader>
           <CardContent>
             {isLoadingReport ? (
@@ -310,6 +379,11 @@ function BrandIntelligenceContent() {
                 </div>
                 <MarkdownContent content={brandReport.content} />
               </>
+            ) : showStormReportHint ? (
+              <div className="py-8 text-center text-muted-foreground">
+                <p>Brand intelligence data available in STORM Report</p>
+                <p className="text-sm mt-2">View the full report for detailed brand context</p>
+              </div>
             ) : (
               <div className="py-8 text-center text-muted-foreground">
                 No STORM report available for this campaign

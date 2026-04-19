@@ -5,6 +5,8 @@ Port: 8080
 
 import json
 import os
+import re
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -87,6 +89,85 @@ def get_brand_report_path(campaign_name: str) -> Path | None:
         return brand_context
 
     return None
+
+
+def parse_brand_context(content: str) -> dict[str, Any]:
+    """Parse brand_context.txt content and extract structured brand information.
+
+    Extracts:
+    - brand name from campaign title
+    - founding year (defaults to 2024 if not specified)
+    - size (defaults to "Mid-sized")
+    - size_reasoning (defaults to "Based on campaign context")
+    - primary_markets (defaults to empty list)
+    - active_languages (defaults to ["en"])
+    - industry (defaults to "Technology")
+    - sub_industries (defaults to empty list)
+    - key_competitors (defaults to empty list)
+    - historical_periods (defaults to empty list)
+    """
+    lines = content.strip().split('\n')
+    result: dict[str, Any] = {
+        "brand": "",
+        "founding_year": 2024,
+        "size": "Mid-sized",
+        "size_reasoning": "Based on campaign context",
+        "primary_markets": [],
+        "active_languages": ["en"],
+        "industry": "Technology",
+        "sub_industries": [],
+        "key_competitors": [],
+        "historical_periods": [],
+    }
+
+    # Extract brand name from campaign title
+    # Format: "Campaign: Apple iPhone 17 vs Samsung Galaxy AI Photo — Ad Creative Comparison"
+    campaign_line = next((line for line in lines if line.startswith("Campaign:")), "")
+    if campaign_line:
+        # Extract brands from "Brand A vs Brand B" pattern
+        vs_match = re.search(r'Campaign:\s*(.+?)\s*vs\s*(.+?)(?:\s*—|\s*$)', campaign_line)
+        if vs_match:
+            brand1 = vs_match.group(1).strip()
+            brand2 = vs_match.group(2).strip()
+            result["brand"] = f"{brand1} vs {brand2}"
+            result["key_competitors"] = [brand1, brand2]
+        else:
+            result["brand"] = campaign_line.replace("Campaign:", "").strip()
+
+    # Extract target audience (for industry/size hints)
+    audience_line = next((line for line in lines if "Target audience:" in line), "")
+    if audience_line:
+        audience = audience_line.replace("Target audience:", "").strip()
+        if "premium" in audience.lower() or "tech-savvy" in audience.lower():
+            result["size"] = "Premium/Luxury"
+            result["size_reasoning"] = "Target audience indicates premium market position"
+        if "tech" in audience.lower() or "smartphone" in audience.lower():
+            result["industry"] = "Consumer Electronics"
+            result["sub_industries"] = ["Smartphones", "Mobile Technology"]
+
+    # Extract themes (for industry hints)
+    theme_line = next((line for line in lines if "- Theme:" in line), "")
+    if theme_line:
+        if "AI" in theme_line or "artificial intelligence" in theme_line.lower():
+            result["industry"] = "Artificial Intelligence"
+            result["sub_industries"] = ["AI Software", "Machine Learning"]
+
+    # Extract platforms (for markets hint)
+    platform_line = next((line for line in lines if "Platform:" in line), "")
+    if platform_line:
+        if "TikTok" in platform_line:
+            result["active_languages"] = ["en", "es", "pt", "id"]
+        if "Instagram" in platform_line or "YouTube" in platform_line:
+            result["primary_markets"].append({"country": "United States", "language": "en", "depth": "high"})
+
+    # Extract objective (for industry hints)
+    objective_line = next((line for line in lines if "Objective:" in line), "")
+    if objective_line:
+        if "social media" in objective_line.lower():
+            result["primary_markets"].append({"country": "United States", "language": "en", "depth": "high"})
+            result["primary_markets"].append({"country": "Germany", "language": "de", "depth": "medium"})
+
+    return result
 
 
 def get_brand_profile_path(campaign_name: str) -> Path | None:
@@ -201,6 +282,7 @@ async def get_brand_profile(campaign_name: str) -> dict[str, Any]:
     """Get brand_profile.json for a campaign.
 
     Falls back to brand_context.txt if brand_profile.json doesn't exist.
+    Parses brand_context.txt and extracts structured brand information.
     """
     profile_path = get_brand_profile_path(campaign_name)
 
@@ -215,12 +297,22 @@ async def get_brand_profile(campaign_name: str) -> dict[str, Any]:
         if profile_path.suffix == ".txt":
             with open(profile_path, "r") as f:
                 content = f.read()
-            return {
+
+            # Parse brand_context.txt and extract structured data
+            parsed_data = parse_brand_context(content)
+
+            # Add metadata about the file source
+            file_stat = profile_path.stat()
+            parsed_data["_source_file"] = {
                 "filename": profile_path.name,
                 "path": str(profile_path),
                 "type": "brand_context",
-                "content": content
+                "last_modified": file_stat.st_mtime,
+                "last_modified_iso": datetime.fromtimestamp(file_stat.st_mtime).isoformat()
             }
+
+            return parsed_data
+
         # JSON file
         with open(profile_path, "r") as f:
             data = json.load(f)
