@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { useDashboard } from '@/lib/dashboard-context'
-import { brands } from '@/lib/data'
 import {
   Select,
   SelectContent,
@@ -48,6 +47,7 @@ export function Sidebar() {
     availableCampaigns,
     isDarkMode,
     toggleDarkMode,
+    loading,
   } = useDashboard()
   const [isMobileOpen, setIsMobileOpen] = useState(false)
 
@@ -95,27 +95,37 @@ export function Sidebar() {
             <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
               Brand
             </label>
-            <Select
-              value={selectedBrandId || ''}
-              onValueChange={(value) => {
-                setSelectedBrandId(value)
-                setSelectedCampaignId(null)
-              }}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select brand" />
-              </SelectTrigger>
-              <SelectContent>
-                {brands.map((brand) => (
-                  <SelectItem key={brand.id} value={brand.id}>
-                    <span className="flex items-center gap-2">
-                      <span>{brand.logo}</span>
-                      <span>{brand.name}</span>
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {loading ? (
+              <div className="h-10 w-full animate-pulse bg-muted rounded-md" />
+            ) : (
+              <Select
+                value={selectedBrandId || ''}
+                onValueChange={(value) => {
+                  setSelectedBrandId(value)
+                  setSelectedCampaignId(null)
+                }}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select brand" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from(new Set(availableCampaigns.map((c) => c.brandId))).map((brandId) => {
+                    // Derive brand name from campaign names: "apple_vs_samsung" -> "Apple vs Samsung"
+                    const campaignForBrand = availableCampaigns.find((c) => c.brandId === brandId)
+                    if (!campaignForBrand) return null
+                    const brandName = brandId.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+                    return (
+                      <SelectItem key={brandId} value={brandId}>
+                        <span className="flex items-center gap-2">
+                          <span>_brand_</span>
+                          <span>{brandName}</span>
+                        </span>
+                      </SelectItem>
+                    )
+                  })}
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
           {selectedBrandId && (
@@ -123,21 +133,25 @@ export function Sidebar() {
               <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
                 Campaign
               </label>
-              <Select
-                value={selectedCampaignId || ''}
-                onValueChange={setSelectedCampaignId}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select campaign" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableCampaigns.map((campaign) => (
-                    <SelectItem key={campaign.id} value={campaign.id}>
-                      {campaign.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {loading ? (
+                <div className="h-10 w-full animate-pulse bg-muted rounded-md" />
+              ) : (
+                <Select
+                  value={selectedCampaignId || ''}
+                  onValueChange={setSelectedCampaignId}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select campaign" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableCampaigns.map((campaign) => (
+                      <SelectItem key={campaign.id} value={campaign.id}>
+                        {campaign.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
           )}
         </div>
