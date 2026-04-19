@@ -116,10 +116,7 @@ export function Sidebar() {
                     const brandName = String(brandId).replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
                     return (
                       <SelectItem key={brandId} value={brandId}>
-                        <span className="flex items-center gap-2">
-                          <span>_brand_</span>
-                          <span>{brandName}</span>
-                        </span>
+                        {brandName}
                       </SelectItem>
                     )
                   })}

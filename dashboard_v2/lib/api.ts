@@ -41,7 +41,9 @@ export async function fetchBrandReport(campaignName: string): Promise<{ content:
 // Transform raw pipeline score data to Creative type
 export function transformPipelineData(rawData: any[]): Creative[] {
   return rawData.map((item, index) => {
-    const assetName = item.asset_name || item.asset?.split('/')?.pop() || `creative_${index}`
+    // Transform creative name: "apple_pay_outrun" -> "Apple Pay Outrun"
+    const rawName = item.asset_name || item.asset?.split('/')?.pop() || `creative_${index}`
+    const assetName = rawName.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
     const assetId = item.asset_path?.split('/')?.pop()?.replace('.mp4', '') || `creative_${index}`
 
     // Transform mirofish data - extract from llm_scores or direct object
