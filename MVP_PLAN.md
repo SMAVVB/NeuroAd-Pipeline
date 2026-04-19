@@ -22,8 +22,8 @@
 | Brand Research Agent | ✅ | Komplett, erster erfolgreicher Run (yfood 17k Wörter STORM) |
 | Pipeline A | ✅ | Erster erfolgreicher End-to-End Run (apple_vs_samsung) |
 | Report Agent | ✅ | Alle 4 Module, JSON + Markdown Output |
-| Dashboard v2 | 🔨 | Draft in Lovable/v0.dev, React Frontend |
-| GitHub | 🔨 | .gitignore erstellt, Push ausstehend |
+| Dashboard v2 | 🔨 | In Entwicklung, startet lokal (Next.js 16, Port 3000) |
+| GitHub | ✅ | Push abgeschlossen |
 
 ---
 
@@ -94,6 +94,36 @@ Output: reports/*.json + .md
 Dashboard v2                ← React + Vite, Port 3002
 7 Seiten mit Sidebar           Recharts, Three.js, D3.js
 ```
+
+---
+
+## Dashboard v2
+
+### Tech Stack
+- Next.js 16 (App Router)
+- React 19
+- TypeScript
+- Tailwind CSS v4
+- shadcn/ui components
+- Recharts (Charts), D3 v7 (Force Graph), Three.js (3D Brain)
+
+### Port Konfiguration
+- Frontend: Port 3000 (Next.js dev server)
+- Backend: Port 8080 (FastAPI)
+
+### Starten
+```bash
+bash ~/neuro_pipeline_project/start_dashboard.sh
+```
+
+### Verfügbare Seiten
+1. Overview — Creative Performance Table, Modul-Cards
+2. Brand Intelligence — Brand Profil, STORM Report, Märkte
+3. TRIBE Neural — 3D Brain, 6 Metrik-Balken, AI Analyse
+4. MiroFish Social — Animiertes Agent-Netzwerk (D3.js), Sentiment Gauge
+5. CLIP Brand — Radar Chart, Label Scores
+6. ViNet Attention — Heatmap, Product/Brand/CTA Attention
+7. Report & Ranking — Creative Ranking, Executive Summary, Export
 
 ---
 
@@ -174,15 +204,12 @@ Design: Weiß/Schwarz, Inter + JetBrains Mono, Linear.app Aesthetic
 ## Offene Punkte
 
 ### Sofort
-- [ ] Dashboard v2 Code aus Lovable in dashboard_v2/ übernehmen
-- [ ] Dashboard v2 echte Daten einlesen
-- [ ] GitHub Push (git add . → commit → push)
-- [ ] Lemonade Proxy testen und aktivieren
-
-### Kurzfristig
 - [ ] ViNet ROIs definieren für apple_vs_samsung Assets
 - [ ] Pipeline A mit yfood Creatives testen
 - [ ] Brand Research Nachtrun vollständig
+
+### Kurzfristig
+- [ ] Lemonade Proxy testen und aktivieren
 
 ### Geplante Module-Upgrades (Post-MVP)
 | Aktuell | Ersatz | Grund |

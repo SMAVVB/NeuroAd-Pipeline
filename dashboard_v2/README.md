@@ -1,35 +1,62 @@
-# v0-neuroad-pipeline-dashboard
+# NeuroAd Pipeline Dashboard v2
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [v0](https://v0.app).
+Next.js 16 / React 19 / TypeScript Dashboard für das NeuroAd Pipeline Projekt.
 
-## Built with v0
+## Voraussetzungen
 
-This repository is linked to a [v0](https://v0.app) project. You can continue developing by visiting the link below -- start new chats to make changes, and v0 will push commits directly to this repo. Every merge to `main` will automatically deploy.
+Das Dashboard benötigt das FastAPI Backend, das auf Port 8080 laufen muss.
 
-[Continue working on v0 →](https://v0.app/chat/projects/prj_a2D6858Rt5ouTNGv1AJpPUJyxesW)
-
-## Getting Started
-
-First, run the development server:
-
+### FastAPI Backend starten
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
+bash ~/neuro_pipeline_project/start_dashboard.sh
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Dies startet:
+- **FastAPI Backend** auf Port 8080
+- **Next.js Dashboard** auf Port 3000
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Lokales Setup
 
-## Learn More
+```bash
+cd ~/neuro_pipeline_project/dashboard_v2
 
-To learn more, take a look at the following resources:
+# Abhängigkeiten installieren (einmalig)
+npm install
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-- [v0 Documentation](https://v0.app/docs) - learn about v0 and how to use it.
+# Development Server starten
+npm run dev
+```
 
-<a href="https://v0.app/chat/api/kiro/clone/SMAVVB/v0-neuroad-pipeline-dashboard" alt="Open in Kiro"><img src="https://pdgvvgmkdvyeydso.public.blob.vercel-storage.com/open%20in%20kiro.svg?sanitize=true" /></a>
+Das Dashboard ist dann unter [http://localhost:3000](http://localhost:3000) erreichbar.
+
+## Umgebungsvariablen
+
+Keine speziellen Umgebungsvariablen erforderlich. Das Dashboard holt seine Daten vom FastAPI Backend auf `http://localhost:8080`.
+
+## Tech Stack
+
+- **Framework**: Next.js 16 (App Router)
+- **UI Library**: React 19
+- **Typing**: TypeScript
+- **Styling**: Tailwind CSS v4
+- **Components**: shadcn/ui
+- **Charts**: Recharts
+- **Graphs**: D3 v7, Three.js
+
+## Verfügbare Seiten
+
+| Seite | Beschreibung |
+|-------|-------------|
+| `/` | Overview — Creative Performance Table, Modul-Cards |
+| `/brand-intelligence` | Brand Profil, STORM Report, Märkte |
+| `/tribe` | 3D Brain, 6 Metrik-Balken, AI Analyse |
+| `/mirofish` | Animiertes Agent-Netzwerk, Sentiment Gauge |
+| `/clip` | Radar Chart, Label Scores |
+| `/vinet` | Heatmap, Product/Brand/CTA Attention |
+| `/report` | Creative Ranking, Executive Summary |
+
+## Design System
+
+- **Farben**: Weiß/Schwarz, medical-precision aesthetic
+- **Schriftarten**: Inter (Body), JetBrains Mono (Score Values)
+- **Aesthetic**: Linear.app / Vercel inspiriert
