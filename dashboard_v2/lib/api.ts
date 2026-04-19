@@ -11,13 +11,15 @@ export async function fetchCampaigns(): Promise<Campaign[]> {
   }
   const campaignNames = await response.json()
 
-  // Map campaign names to campaign objects with IDs
-  return campaignNames.map((name: string) => ({
-    id: name,
-    name: name,
-    brandId: name, // Use campaign name as brandId for now
-    date: new Date().toISOString().split('T')[0]
-  }))
+  // Data already transformed by Next.js API route
+  return Array.isArray(campaignNames) && typeof campaignNames[0] === 'object'
+    ? campaignNames
+    : campaignNames.map((name: string) => ({
+        id: name,
+        name: name,
+        brandId: name,
+        date: new Date().toISOString().split('T')[0]
+      }))
 }
 
 export async function fetchCampaignScores(campaignName: string): Promise<any[]> {

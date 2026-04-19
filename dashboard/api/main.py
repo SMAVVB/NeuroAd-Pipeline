@@ -123,6 +123,38 @@ def get_brand_profile_path(campaign_name: str) -> Path | None:
     return None
 
 
+
+def load_campaign_scores_from_files(campaign_name: str) -> list:
+    """Load scores by merging individual per-asset JSON files."""
+    scores_dir = CAMPAIGNS_DIR / campaign_name / "scores"
+    if not scores_dir.exists():
+        return []
+    assets = {}
+    for f in scores_dir.glob("*_tribe_scores.json"):
+        name = f.name.replace("_tribe_scores.json", "")
+        assets[name] = {"asset_name": name, "asset_path": f"campaigns/{campaign_name}/assets/{name}.mp4"}
+    for name in list(assets.keys()):
+        t = scores_dir / f"{name}_tribe_scores.json"
+        if t.exists():
+            assets[name]["tribe"] = json.loads(t.read_text())
+        c = scores_dir / f"{name}_clip_scores.json"
+        if c.exists():
+            assets[name]["clip"] = json.loads(c.read_text())
+        s = scores_dir / f"{name}_saliency_scores.json"
+        if s.exists():
+            assets[name]["vinet"] = json.loads(s.read_text())
+        prf = scores_dir / "pipeline_results_final.json"
+        if prf.exists():
+            pipeline = json.loads(prf.read_text())
+            for item in pipeline:
+                iname = item.get("asset_name", "").replace(".mp4", "")
+                if iname == name:
+                    assets[name]["mirofish"] = item.get("mirofish", {})
+                    assets[name]["composite"] = item.get("composite", {})
+                    break
+    return list(assets.values())
+
+
 @app.get("/api/campaigns")
 async def list_campaigns() -> list[str]:
     """List all campaign folder names."""
@@ -131,24 +163,11 @@ async def list_campaigns() -> list[str]:
 
 @app.get("/api/campaigns/{campaign_name}/scores")
 async def get_campaign_scores(campaign_name: str) -> list[dict[str, Any]]:
-    """Get pipeline scores from pipeline_results_final.json (LIST format)."""
-    scores_path = get_scores_path(campaign_name)
-
-    if not scores_path.exists():
-        raise HTTPException(
-            status_code=404,
-            detail=f"Scores file not found for campaign '{campaign_name}' at {scores_path}"
-        )
-
-    try:
-        with open(scores_path, "r") as f:
-            data = json.load(f)
-        return data
-    except json.JSONDecodeError as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to parse scores file: {str(e)}"
-        )
+    """Get merged scores from individual per-asset JSON files."""
+    data = load_campaign_scores_from_files(campaign_name)
+    if not data:
+        raise HTTPException(status_code=404, detail=f"No scores found for campaign '{campaign_name}'")
+    return data
 
 
 @app.get("/api/campaigns/{campaign_name}/brand")

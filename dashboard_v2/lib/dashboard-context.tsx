@@ -32,7 +32,7 @@ const brands: Brand[] = [
 ]
 
 export function DashboardProvider({ children }: { children: ReactNode }) {
-  const [selectedBrandId, setSelectedBrandId] = useState<string | null>('apple')
+  const [selectedBrandId, setSelectedBrandId] = useState<string | null>(null)
   const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null)
   const [selectedCreativeId, setSelectedCreativeId] = useState<string | null>(null)
   const [isDarkMode, setIsDarkMode] = useState(false)

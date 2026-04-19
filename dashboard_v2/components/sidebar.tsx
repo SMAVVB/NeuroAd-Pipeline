@@ -113,7 +113,7 @@ export function Sidebar() {
                     // Derive brand name from campaign names: "apple_vs_samsung" -> "Apple vs Samsung"
                     const campaignForBrand = availableCampaigns.find((c) => c.brandId === brandId)
                     if (!campaignForBrand) return null
-                    const brandName = brandId.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+                    const brandName = String(brandId).replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
                     return (
                       <SelectItem key={brandId} value={brandId}>
                         <span className="flex items-center gap-2">
@@ -128,7 +128,7 @@ export function Sidebar() {
             )}
           </div>
 
-          {selectedBrandId && (
+          {true && (
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
                 Campaign
