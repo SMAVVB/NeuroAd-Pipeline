@@ -49,6 +49,7 @@ interface BrandResearch {
     last_modified: number
     last_modified_iso: string
   }
+  _from_storm_report?: boolean
 }
 
 function BrandIntelligenceContent() {
@@ -127,6 +128,9 @@ function BrandIntelligenceContent() {
   // Helper to determine if we should show STORM Report hint
   const showStormReportHint = !brandResearch && brandReport
 
+  // Helper to check if brand research comes from STORM report
+  const isStormReportData = brandResearch?._from_storm_report
+
   return (
     <>
       <PageHeader
@@ -150,23 +154,29 @@ function BrandIntelligenceContent() {
             <div>
               <span className="text-sm text-muted-foreground">Founded</span>
               <p className="font-mono font-medium text-lg">
-                {brandResearch ? `Year ${brandResearch.founding_year}` : existingBrand?.foundingYear || (brandReport ? 'See STORM Report' : 'N/A')}
+                {brandResearch ? `Year ${brandResearch.founding_year}` : existingBrand?.foundingYear || 'N/A'}
+                {isStormReportData && <Badge variant="outline" className="ml-2 text-[10px]">STORM Data</Badge>}
               </p>
             </div>
             <div>
               <span className="text-sm text-muted-foreground">Headquarters</span>
-              <p className="font-medium">{existingBrand?.headquarters || (brandReport ? 'See STORM Report' : 'N/A')}</p>
+              <p className="font-medium">
+                {brandResearch ? 'Data from STORM Report' : existingBrand?.headquarters || 'N/A'}
+                {isStormReportData && <Badge variant="outline" className="ml-2 text-[10px]">STORM Data</Badge>}
+              </p>
             </div>
             <div>
               <span className="text-sm text-muted-foreground">Industry</span>
               <p className="font-medium">
-                {brandResearch?.industry || existingBrand?.industry || (brandReport ? 'See STORM Report' : 'N/A')}
+                {brandResearch?.industry || 'N/A'}
+                {isStormReportData && <Badge variant="outline" className="ml-2 text-[10px]">STORM Data</Badge>}
               </p>
             </div>
             <div>
               <span className="text-sm text-muted-foreground">Size</span>
               <p className="font-medium">
-                {brandResearch?.size || existingBrand?.size || (brandReport ? 'See STORM Report' : 'N/A')}
+                {brandResearch?.size || 'N/A'}
+                {isStormReportData && <Badge variant="outline" className="ml-2 text-[10px]">STORM Data</Badge>}
               </p>
             </div>
           </div>
@@ -181,9 +191,10 @@ function BrandIntelligenceContent() {
               <Globe className="h-5 w-5 text-muted-foreground" />
               <div>
                 <p className="text-3xl font-mono font-semibold">
-                  {brandResearch ? brandResearch.primary_markets.length : existingBrand?.markets.length || (brandReport ? 0 : 0)}
+                  {brandResearch ? brandResearch.primary_markets.length : existingBrand?.markets.length || 0}
                 </p>
                 <p className="text-sm text-muted-foreground">Active Markets</p>
+                {isStormReportData && <Badge variant="outline" className="mt-1 text-[10px]">STORM Data</Badge>}
               </div>
             </div>
           </CardContent>
@@ -194,9 +205,10 @@ function BrandIntelligenceContent() {
               <Users className="h-5 w-5 text-muted-foreground" />
               <div>
                 <p className="text-3xl font-mono font-semibold">
-                  {brandResearch ? brandResearch.key_competitors.length : existingBrand?.competitors.length || (brandReport ? 0 : 0)}
+                  {brandResearch ? brandResearch.key_competitors.length : existingBrand?.competitors.length || 0}
                 </p>
                 <p className="text-sm text-muted-foreground">Key Competitors</p>
+                {isStormReportData && <Badge variant="outline" className="mt-1 text-[10px]">STORM Data</Badge>}
               </div>
             </div>
           </CardContent>
@@ -207,9 +219,10 @@ function BrandIntelligenceContent() {
               <Building2 className="h-5 w-5 text-muted-foreground" />
               <div>
                 <p className="text-3xl font-mono font-semibold">
-                  {brandResearch ? brandResearch.sub_industries.length : existingBrand?.subIndustries.length || (brandReport ? 0 : 0)}
+                  {brandResearch ? brandResearch.sub_industries.length : existingBrand?.subIndustries.length || 0}
                 </p>
                 <p className="text-sm text-muted-foreground">Sub-Industries</p>
+                {isStormReportData && <Badge variant="outline" className="mt-1 text-[10px]">STORM Data</Badge>}
               </div>
             </div>
           </CardContent>
@@ -278,6 +291,7 @@ function BrandIntelligenceContent() {
                     {typeof market === 'string' ? market : market.country}
                   </Badge>
                 ))}
+                {isStormReportData && <Badge variant="outline" className="text-[10px]">STORM Data</Badge>}
               </div>
               )}
             </CardContent>
@@ -301,6 +315,7 @@ function BrandIntelligenceContent() {
                 {(brandResearch?.key_competitors || existingBrand?.competitors || []).map((competitor: string) => (
                   <Badge key={competitor} variant="outline">{competitor}</Badge>
                 ))}
+                {isStormReportData && <Badge variant="outline" className="text-[10px]">STORM Data</Badge>}
               </div>
               )}
             </CardContent>
@@ -324,6 +339,7 @@ function BrandIntelligenceContent() {
                 {(brandResearch?.sub_industries || existingBrand?.subIndustries || []).map((sub: string) => (
                   <Badge key={sub} variant="secondary">{sub}</Badge>
                 ))}
+                {isStormReportData && <Badge variant="outline" className="text-[10px]">STORM Data</Badge>}
               </div>
               )}
             </CardContent>
@@ -331,7 +347,7 @@ function BrandIntelligenceContent() {
         </div>
       </div>
 
-      {/* STORM Report Section */}
+       {/* STORM Report Section */}
       <div className="mt-6">
         <Card>
           <CardHeader>
@@ -358,6 +374,7 @@ function BrandIntelligenceContent() {
                 <Calendar className="h-3 w-3" />
                 <span>
                   Last research run: {new Date(lastResearchRun || brandResearch!._source_file!.last_modified_iso!).toLocaleDateString()}
+                  {isStormReportData && <Badge variant="outline" className="ml-2 text-[10px]">STORM Data</Badge>}
                 </span>
               </div>
             )}
@@ -376,6 +393,7 @@ function BrandIntelligenceContent() {
                 <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
                   <span className="font-mono">Source:</span>
                   <span>{brandReport.filename}</span>
+                  {isStormReportData && <Badge variant="outline" className="text-[10px]">STORM Data</Badge>}
                 </div>
                 <MarkdownContent content={brandReport.content} />
               </>

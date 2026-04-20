@@ -171,6 +171,74 @@ def parse_brand_context(content: str) -> dict[str, Any]:
     return result
 
 
+def parse_storm_markdown_report(content: str) -> dict[str, Any]:
+    """Parse STORM markdown report and extract structured brand information.
+
+    Extracts:
+    - brand name from first H1 heading (e.g., "# 📊 NeuroAd Campaign Report: apple_vs_samsung")
+    - generated date from the date line
+    - industry and sub_industries from report content
+    - key_competitors from report content
+    - size and size_reasoning defaults
+    """
+    result: dict[str, Any] = {
+        "brand": "",
+        "founding_year": 2024,
+        "size": "Mid-sized",
+        "size_reasoning": "Based on STORM Report data",
+        "primary_markets": [],
+        "active_languages": ["en"],
+        "industry": "Technology",
+        "sub_industries": [],
+        "key_competitors": [],
+        "historical_periods": [],
+    }
+
+    lines = content.split('\n')
+
+    # Extract brand name from H1 heading
+    # Format: "# 📊 NeuroAd Campaign Report: apple_vs_samsung"
+    h1_line = next((line for line in lines if line.startswith("# ") and "Campaign Report" in line), "")
+    if h1_line:
+        # Extract the campaign identifier after "Campaign Report:"
+        report_match = re.search(r'Campaign Report:\s*(.+?)(?:\s*$)', h1_line)
+        if report_match:
+            result["brand"] = report_match.group(1).strip()
+
+    # Extract generated date
+    # Format: "**Generated:** 2026-04-15T14:52:13.465447"
+    generated_line = next((line for line in lines if "**Generated:**" in line), "")
+    if generated_line:
+        date_match = re.search(r'(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})', generated_line)
+        if date_match:
+            result["founding_year"] = int(date_match.group(1)[:4])
+
+    # Extract brand from "Brand:" line (e.g., "**Brand:** apple")
+    brand_line = next((line for line in lines if line.startswith("**Brand:**")), "")
+    if brand_line:
+        brand_value = brand_line.replace("**Brand:**", "").strip()
+        if brand_value and not result["brand"]:
+            result["brand"] = brand_value
+        # Add to competitors
+        if brand_value:
+            result["key_competitors"].append(brand_value)
+
+    # Extract key competitors from "Key Recommendations" or "Weaknesses" sections
+    # Look for patterns like "Brand A vs Brand B"
+    for line in lines:
+        vs_match = re.search(r'(\w+)\s*vs\s*(\w+)', line)
+        if vs_match:
+            competitor1 = vs_match.group(1).strip()
+            competitor2 = vs_match.group(2).strip()
+            if competitor1 and competitor2:
+                if competitor1 not in result["key_competitors"]:
+                    result["key_competitors"].append(competitor1)
+                if competitor2 not in result["key_competitors"]:
+                    result["key_competitors"].append(competitor2)
+
+    return result
+
+
 def get_brand_profile_path(campaign_name: str) -> Path | None:
     """Get path to brand_profile.json for a campaign.
 
@@ -283,7 +351,9 @@ async def get_brand_profile(campaign_name: str) -> dict[str, Any]:
     """Get brand_profile.json for a campaign.
 
     Falls back to brand_context.txt if brand_profile.json doesn't exist.
-    Parses brand_context.txt and extracts structured brand information.
+    Also parses STORM markdown reports if no other profile exists.
+
+    Returns structured brand data with metadata about the source file.
     """
     profile_path = get_brand_profile_path(campaign_name)
 
@@ -294,7 +364,13 @@ async def get_brand_profile(campaign_name: str) -> dict[str, Any]:
         )
 
     try:
-        # Handle brand_context.txt (plain text) vs brand_profile.json (JSON)
+        # Handle brand_profile.json (JSON)
+        if profile_path.suffix == ".json":
+            with open(profile_path, "r") as f:
+                data = json.load(f)
+            return data
+
+        # Handle brand_context.txt (plain text)
         if profile_path.suffix == ".txt":
             with open(profile_path, "r") as f:
                 content = f.read()
@@ -314,10 +390,33 @@ async def get_brand_profile(campaign_name: str) -> dict[str, Any]:
 
             return parsed_data
 
-        # JSON file
-        with open(profile_path, "r") as f:
-            data = json.load(f)
-        return data
+        # Handle markdown files (STORM reports)
+        if profile_path.suffix == ".md":
+            with open(profile_path, "r") as f:
+                content = f.read()
+
+            # Parse STORM markdown and extract structured data
+            parsed_data = parse_storm_markdown_report(content)
+
+            # Add metadata about the file source
+            file_stat = profile_path.stat()
+            parsed_data["_source_file"] = {
+                "filename": profile_path.name,
+                "path": str(profile_path),
+                "type": "storm_report",
+                "last_modified": file_stat.st_mtime,
+                "last_modified_iso": datetime.fromtimestamp(file_stat.st_mtime).isoformat()
+            }
+
+            # Mark that data comes from STORM report
+            parsed_data["_from_storm_report"] = True
+
+            return parsed_data
+
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file format: {profile_path.suffix}"
+        )
     except json.JSONDecodeError as e:
         raise HTTPException(
             status_code=500,
