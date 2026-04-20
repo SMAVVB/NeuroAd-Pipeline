@@ -6,8 +6,8 @@ from datetime import datetime
 from pathlib import Path
 
 # --- KONFIGURATION ---
-# LLM_URL: Proxy für Token Tracking (Port 9002) → Lemonade (Port 8888)
-LLM_URL = "http://127.0.0.1:9002/v1/chat/completions"
+# LLM_URL: Proxy für Token Tracking (Port 8888) → Lemonade (Port 8888)
+LLM_URL = "http://127.0.0.1:8888/v1/chat/completions"
 SEARXNG_URL = "http://127.0.0.1:8889/search"
 RAW_DATA_DIR = "raw_data" 
 
