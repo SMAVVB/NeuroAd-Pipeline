@@ -43,20 +43,23 @@ export function transformPipelineData(rawData: any[]): Creative[] {
   return rawData.map((item, index) => {
     // Transform creative name: "apple_pay_outrun" -> "Apple Pay Outrun"
     const rawName = item.asset_name || item.asset?.split('/')?.pop() || `creative_${index}`
-    const assetName = rawName.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+    const assetName = rawName.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())
     const assetId = item.asset_path?.split('/')?.pop()?.replace('.mp4', '') || `creative_${index}`
 
     // Transform mirofish data - extract from llm_scores or direct object
     const mirofishNested = item.mirofish || {}
     const mirofishData = mirofishNested.llm_scores || mirofishNested
 
-    // Transform clip data - use brand_consistency from composite.breakdown
+    // Transform clip data - use brand_match_score from clip scores
     const clipNested = item.clip || {}
-    const clipScore = clipNested.brand_consistency ?? clipNested.brand_match_score ?? 0
+    const clipScore = clipNested.brand_match_score ?? clipNested.brand_consistency ?? 0
+    const topLabel = clipNested.top_label ?? 'unknown'
+    const allScores = clipNested.all_scores || {}
+    const labels = Object.entries(allScores).map(([name, score]) => ({ name, score: score as number }))
 
-    // Transform vinet data - use visual_attention from composite.breakdown as proxy
+    // Transform vinet data - use mean_saliency as the main score
     const vinetData = item.vinet || item.saliency || {}
-    const vinetScore = vinetData.mean_saliency ?? vinetData.brand_attention ?? 0
+    const vinetScore = vinetData.mean_saliency ?? 0
 
     // Transform tribe data - read directly from item.tribe, NOT from composite.breakdown
     const tribeNested = item.tribe || {}
@@ -119,16 +122,16 @@ export function transformPipelineData(rawData: any[]): Creative[] {
       },
       clip: {
         brand_match_score: clipScore,
-        top_label: clipNested.top_label ?? 'unknown',
+        top_label: topLabel,
         grade: getGrade(clipScore),
         visual_dimensions: {
-          color_consistency: clipNested.color_consistency ?? 0,
-          typography_match: clipNested.typography_match ?? 0,
-          imagery_style: clipNested.imagery_style ?? 0,
-          tone_alignment: clipNested.tone_alignment ?? 0,
-          logo_visibility: clipNested.logo_visibility ?? 0,
+          color_consistency: clipNested.color_consistency ?? clipScore,
+          typography_match: clipNested.typography_match ?? clipScore,
+          imagery_style: clipNested.imagery_style ?? clipScore,
+          tone_alignment: clipNested.tone_alignment ?? clipScore,
+          logo_visibility: clipNested.logo_visibility ?? clipScore,
         },
-        labels: clipNested.labels ?? [],
+        labels: labels.length > 0 ? labels : [{ name: topLabel, score: clipScore }],
       },
       vinet: {
         mean_saliency: vinetScore,

@@ -129,18 +129,24 @@ function CLIPContent() {
     )
   }
 
-  // Handle missing visual_dimensions - create fallback from brand_consistency
+  // Use labels (from all_scores) for Radar Chart if available, otherwise fall back to visualDimensions
+  const hasLabels = selectedCreative.clip.labels && selectedCreative.clip.labels.length > 0
   const hasVisualDimensions = selectedCreative.clip.visual_dimensions &&
     Object.keys(selectedCreative.clip.visual_dimensions).length > 0 &&
     Object.values(selectedCreative.clip.visual_dimensions).some(v => v > 0)
 
-  const visualDimensions = hasVisualDimensions ? selectedCreative.clip.visual_dimensions : {
-    color_consistency: selectedCreative.clip.brand_match_score,
-    typography_match: selectedCreative.clip.brand_match_score,
-    imagery_style: selectedCreative.clip.brand_match_score,
-    tone_alignment: selectedCreative.clip.brand_match_score,
-    logo_visibility: selectedCreative.clip.brand_match_score,
-  }
+  // Use labels data for Radar Chart (all_scores contains the actual label scores)
+  const chartDimensions = hasLabels
+    ? Object.fromEntries(selectedCreative.clip.labels.map(l => [l.name, l.score]))
+    : hasVisualDimensions
+      ? selectedCreative.clip.visual_dimensions
+      : {
+          color_consistency: selectedCreative.clip.brand_match_score,
+          typography_match: selectedCreative.clip.brand_match_score,
+          imagery_style: selectedCreative.clip.brand_match_score,
+          tone_alignment: selectedCreative.clip.brand_match_score,
+          logo_visibility: selectedCreative.clip.brand_match_score,
+        }
 
   // Get top label from clip.top_label or clip.labels[0]
   const topLabel = selectedCreative.clip.top_label || (selectedCreative.clip.labels && selectedCreative.clip.labels[0]?.name) || 'unknown'
@@ -184,10 +190,10 @@ function CLIPContent() {
         {/* Radar Chart */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Visual Dimensions</CardTitle>
+            <CardTitle className="text-base">Score Dimensions</CardTitle>
           </CardHeader>
           <CardContent>
-            <RadarChart dimensions={visualDimensions} />
+            <RadarChart dimensions={chartDimensions} />
           </CardContent>
         </Card>
 

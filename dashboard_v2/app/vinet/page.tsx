@@ -184,26 +184,32 @@ function ViNetContent() {
         </CardContent>
       </Card>
 
-      {/* Attention Metrics */}
+      {/* Attention Metrics - show only if data available */}
       <div className="grid gap-4 md:grid-cols-3 mb-6">
-        <AttentionMetricCard
-          icon={Package}
-          label="Product Attention"
-          value={selectedCreative.vinet.product_attention}
-          hasData={hasData}
-        />
-        <AttentionMetricCard
-          icon={Bookmark}
-          label="Brand Attention"
-          value={selectedCreative.vinet.brand_attention}
-          hasData={hasData}
-        />
-        <AttentionMetricCard
-          icon={MousePointer}
-          label="CTA Attention"
-          value={selectedCreative.vinet.cta_attention}
-          hasData={hasData}
-        />
+        {selectedCreative.vinet.product_attention > 0 && (
+          <AttentionMetricCard
+            icon={Package}
+            label="Product Attention"
+            value={selectedCreative.vinet.product_attention}
+            hasData={hasData}
+          />
+        )}
+        {selectedCreative.vinet.brand_attention > 0 && (
+          <AttentionMetricCard
+            icon={Bookmark}
+            label="Brand Attention"
+            value={selectedCreative.vinet.brand_attention}
+            hasData={hasData}
+          />
+        )}
+        {selectedCreative.vinet.cta_attention > 0 && (
+          <AttentionMetricCard
+            icon={MousePointer}
+            label="CTA Attention"
+            value={selectedCreative.vinet.cta_attention}
+            hasData={hasData}
+          />
+        )}
       </div>
 
       {/* Main Attention Score Display */}
