@@ -31,10 +31,19 @@ echo "FastAPI Backend gestartet auf Port 8080"
 # Next.js Dashboard
 cd dashboard_v2
 
-nohup npm run dev > ../dashboard_dev.log 2>&1 &
+nohup npm run dev -- --port 3001 > ../dashboard_dev.log 2>&1 &
 DASHBOARD_PID=$!
 
-echo "Dashboard gestartet auf Port 3000"
+echo "Dashboard gestartet auf Port 3001"
 
+# Wait for dashboard to start
+sleep 10
+
+# Health check
+if curl -s http://localhost:3001/api/campaigns > /dev/null 2>&1; then
+    echo "Dashboard health check successful"
+else
+    echo "WARNING: Dashboard health check failed"
+fi
 
 echo "Logs: dashboard/api/server.log, start_dashboard.log und dashboard_dev.log"
