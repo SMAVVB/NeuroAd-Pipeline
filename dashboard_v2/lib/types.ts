@@ -58,6 +58,11 @@ export interface Creative {
     brand_attention: number
     cta_attention: number
     temporal_variance: number
+    saliency_map_path?: string
+    heatmap_png_path?: string
+    overlay_png_path?: string
+    asset_name?: string
+    asset_path?: string
   }
   overall_score: number
 }

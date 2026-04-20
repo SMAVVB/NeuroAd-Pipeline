@@ -3,6 +3,7 @@ FastAPI Dashboard Backend for NeuroAd Pipeline
 Port: 8080
 """
 
+import base64
 import json
 import os
 import re
@@ -13,7 +14,7 @@ from typing import Any
 import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 
 # Configuration
 CAMPAIGNS_DIR = Path("~/neuro_pipeline_project/campaigns").expanduser()
@@ -362,6 +363,79 @@ async def proxy_mirofish(campaign_name: str, graph_id: str | None = None) -> Any
             "mirofish_api_url": Mirofish_API_URL,
             "note": "MiroFish API requires project context. Use /api/campaigns/{name}/mirofish?graph_id=<id> for specific data."
         }
+
+
+@app.get("/api/campaigns/{campaign_name}/assets/{asset_name}/heatmap")
+async def get_heatmap(campaign_name: str, asset_name: str, heatmap_type: str = "saliency"):
+    """Get heatmap image for a specific asset.
+
+    Returns the saliency heatmap PNG as base64 encoded data.
+    Supports: saliency (default), overlay, temporal, brain
+
+    Returns 404 if no heatmap found.
+    """
+    # Map heatmap types to file suffixes
+    heatmap_suffixes = {
+        "saliency": "saliency_heatmap.png",
+        "overlay": "saliency_frame",
+        "temporal": "temporal.png",
+        "brain": "brain_mean.png",
+    }
+
+    if heatmap_type not in heatmap_suffixes:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid heatmap_type. Supported types: {', '.join(heatmap_suffixes.keys())}"
+        )
+
+    # Build path to the scores directory
+    scores_dir = CAMPAIGNS_DIR / campaign_name / "scores"
+
+    if not scores_dir.exists():
+        raise HTTPException(
+            status_code=404,
+            detail=f"Scores directory not found for campaign '{campaign_name}'"
+        )
+
+    # Find the matching file
+    heatmap_file = None
+    suffix = heatmap_suffixes[heatmap_type]
+
+    if heatmap_type == "saliency":
+        # Look for exact match: {asset_name}_saliency_heatmap.png
+        heatmap_file = scores_dir / f"{asset_name}_{suffix}"
+    elif heatmap_type == "overlay":
+        # Look for frame file (e.g., {asset_name}_saliency_frame016.png)
+        # Find the highest numbered frame file
+        frame_files = list(scores_dir.glob(f"{asset_name}_{suffix}*.png"))
+        if frame_files:
+            # Sort by number in filename and get the last one
+            frame_files.sort(key=lambda f: int(re.search(r'frame(\d+)', f.name).group(1)))
+            heatmap_file = frame_files[-1]
+    else:
+        # Direct match for temporal.png and brain_mean.png
+        heatmap_file = scores_dir / f"{asset_name}_{suffix}"
+
+    if heatmap_file is None or not heatmap_file.exists():
+        raise HTTPException(
+            status_code=404,
+            detail=f"Heatmap file not found: {heatmap_file.name}"
+        )
+
+    # Read and return as base64
+    try:
+        image_data = heatmap_file.read_bytes()
+        encoded_image = base64.b64encode(image_data).decode()
+        return {
+            "image": f"data:image/png;base64,{encoded_image}",
+            "filename": heatmap_file.name,
+            "path": str(heatmap_file),
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to read heatmap file: {str(e)}"
+        )
 
 
 @app.get("/health")

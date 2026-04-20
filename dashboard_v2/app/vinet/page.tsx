@@ -8,11 +8,41 @@ import { useDashboard } from '@/lib/dashboard-context'
 import { aiAnalysis } from '@/lib/data'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { AlertCircle, Package, Bookmark, MousePointer } from 'lucide-react'
+import { AlertCircle } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { toast } from 'sonner'
 
 function AttentionHeatmap({ saliencyData }: { saliencyData: any }) {
   const meanSaliency = saliencyData?.mean_saliency ?? 0
   const hasData = meanSaliency > 0.01
+  const [imageLoaded, setImageLoaded] = useState(false)
+
+  // Extract asset name from asset_path or use saliencyData
+  const getAssetName = () => {
+    if (saliencyData?.asset_name) return saliencyData.asset_name
+    if (saliencyData?.asset_path) {
+      const parts = saliencyData.asset_path.split('/')
+      const lastPart = parts[parts.length - 1]
+      return lastPart.replace('.mp4', '')
+    }
+    return 'apple_iphone17pro_ultimate'
+  }
+
+  const assetName = getAssetName()
+
+  // Extract campaign name from asset_path
+  const getCampaignName = () => {
+    if (saliencyData?.asset_path) {
+      const parts = saliencyData.asset_path.split('/')
+      const campaignIdx = parts.indexOf('campaigns')
+      if (campaignIdx >= 0 && campaignIdx + 1 < parts.length) {
+        return parts[campaignIdx + 1]
+      }
+    }
+    return 'apple_vs_samsung'
+  }
+
+  const campaignName = getCampaignName()
 
   if (!hasData) {
     return (
@@ -31,20 +61,28 @@ function AttentionHeatmap({ saliencyData }: { saliencyData: any }) {
   const heatmapPath = saliencyData?.heatmap_png_path
   const overlayPath = saliencyData?.overlay_png_path
 
-  // Use overlay image if available, otherwise create a simple visualization
-  if (overlayPath) {
-    const imageUrl = `/api/campaigns/${saliencyData?.asset_path?.split('/')[1] || 'apple_vs_samsung'}/scores/${saliencyData?.asset_name?.replace('.mp4', '')}/vinet/overlay`
+  // Use overlay image if available, otherwise use saliency heatmap
+  if (overlayPath || heatmapPath) {
+    const imageUrl = `/api/campaigns/${campaignName}/assets/${assetName}/heatmap`
+    const heatmapType = overlayPath ? 'overlay' : 'saliency'
+
     return (
       <div className="aspect-video bg-muted rounded-lg relative overflow-hidden">
         <img
-          src={imageUrl}
+          src={`${imageUrl}?heatmap_type=${heatmapType}`}
           alt="Attention Heatmap"
-          className="w-full h-full object-cover"
+          className={`w-full h-full object-cover ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+          onLoad={() => setImageLoaded(true)}
           onError={(e) => {
             // Fallback if image not available
             e.currentTarget.style.display = 'none'
           }}
         />
+        {!imageLoaded && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground" />
+          </div>
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
         <div className="absolute bottom-4 right-4 bg-background/80 backdrop-blur-sm px-3 py-1.5 rounded text-xs font-medium text-white">
           Attention Heatmap
@@ -53,7 +91,7 @@ function AttentionHeatmap({ saliencyData }: { saliencyData: any }) {
     )
   }
 
-  // Simple visualization based on mean_saliency value
+  // Simple visualization based on mean_saliency value (fallback)
   return (
     <div className="aspect-video bg-muted rounded-lg relative overflow-hidden">
       {/* Base layer */}
@@ -103,42 +141,6 @@ function AttentionHeatmap({ saliencyData }: { saliencyData: any }) {
   )
 }
 
-function AttentionMetricCard({
-  icon: Icon,
-  label,
-  value,
-  hasData,
-}: {
-  icon: typeof Package
-  label: string
-  value: number
-  hasData: boolean
-}) {
-  const displayValue = hasData ? `${(value * 100).toFixed(0)}%` : '0%'
-  const isZero = value === 0
-
-  return (
-    <Card className={isZero ? 'border-amber-500/30 bg-amber-500/5' : ''}>
-      <CardContent className="pt-6">
-        <div className="flex items-center gap-3 mb-2">
-          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isZero ? 'bg-amber-500/10' : 'bg-muted'}`}>
-            <Icon className={`h-5 w-5 ${isZero ? 'text-amber-500' : 'text-muted-foreground'}`} />
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">{label}</p>
-            <p className={`text-3xl font-mono font-semibold ${isZero ? 'text-amber-500' : ''}`}>
-              {displayValue}
-            </p>
-          </div>
-        </div>
-        {isZero && (
-          <p className="text-xs text-amber-600 mt-2">Needs attention optimization</p>
-        )}
-      </CardContent>
-    </Card>
-  )
-}
-
 function ViNetContent() {
   const { availableCreatives, selectedCreativeId, setSelectedCreativeId } = useDashboard()
 
@@ -184,31 +186,39 @@ function ViNetContent() {
         </CardContent>
       </Card>
 
-      {/* Attention Metrics - show only if data available */}
-      <div className="grid gap-4 md:grid-cols-3 mb-6">
+      {/* Attention Metrics - Product, Brand, CTA as MetricBars */}
+      <div className="space-y-3 mb-6">
+        <p className="text-sm font-medium text-muted-foreground">Attention Scores</p>
         {selectedCreative.vinet.product_attention > 0 && (
-          <AttentionMetricCard
-            icon={Package}
+          <MetricBar
             label="Product Attention"
             value={selectedCreative.vinet.product_attention}
-            hasData={hasData}
+            showPercentage
+            colorClass={selectedCreative.vinet.product_attention > 0.5 ? 'bg-emerald-500' : 'bg-indigo'}
           />
         )}
         {selectedCreative.vinet.brand_attention > 0 && (
-          <AttentionMetricCard
-            icon={Bookmark}
+          <MetricBar
             label="Brand Attention"
             value={selectedCreative.vinet.brand_attention}
-            hasData={hasData}
+            showPercentage
+            colorClass={selectedCreative.vinet.brand_attention > 0.5 ? 'bg-emerald-500' : 'bg-indigo'}
           />
         )}
         {selectedCreative.vinet.cta_attention > 0 && (
-          <AttentionMetricCard
-            icon={MousePointer}
+          <MetricBar
             label="CTA Attention"
             value={selectedCreative.vinet.cta_attention}
-            hasData={hasData}
+            showPercentage
+            colorClass={selectedCreative.vinet.cta_attention > 0.5 ? 'bg-emerald-500' : 'bg-indigo'}
           />
+        )}
+        {selectedCreative.vinet.product_attention === 0 &&
+         selectedCreative.vinet.brand_attention === 0 &&
+         selectedCreative.vinet.cta_attention === 0 && (
+          <div className="text-xs text-muted-foreground italic">
+            No detailed attention scores available
+          </div>
         )}
       </div>
 
