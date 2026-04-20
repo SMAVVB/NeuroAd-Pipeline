@@ -123,7 +123,20 @@ function MiroFishContent() {
   const [graphData, setGraphData] = useState<GraphData | undefined>(undefined)
   const [loadingGraph, setLoadingGraph] = useState(false)
   const [hasGraphError, setHasGraphError] = useState(false)
-  const [selectedCreative, setSelectedCreative] = useState<typeof availableCreatives[0] | null>(null)
+
+  // Calculate selectedCreative directly from availableCreatives and selectedCreativeId
+  // This avoids race conditions with local state synchronization
+  const creative = availableCreatives.find(c => c.id === selectedCreativeId) || availableCreatives[0]
+
+  // Calculate selectedCreative for graph data fetching
+  const selectedCreative = creative
+
+  // Check if MiroFish data is available for this creative
+  const hasMiroFishData = selectedCreative && (
+    (selectedCreative.mirofish.positive_sentiment ?? 0) > 0 ||
+    (selectedCreative.mirofish.virality_score ?? 0) > 0 ||
+    (selectedCreative.mirofish.social_score ?? 0) > 0
+  )
 
   // Fetch MiroFish graph data
   useEffect(() => {
@@ -155,29 +168,6 @@ function MiroFishContent() {
     }
   }, [selectedCreative?.name])
 
-  const sentimentMetrics = [
-    { label: 'Target Audience Match', value: selectedCreative?.mirofish.target_audience_match || 0 },
-    { label: 'Emotional Resonance', value: selectedCreative?.mirofish.emotional_resonance || 0 },
-    { label: 'Shareability', value: selectedCreative?.mirofish.shareability || 0 },
-    { label: 'Brand Affinity', value: selectedCreative?.mirofish.brand_affinity || 0 },
-  ]
-
-  const creative = availableCreatives.find(c => c.id === selectedCreativeId) || availableCreatives[0]
-
-  if (!creative) {
-    return (
-      <div className="flex items-center justify-center h-[60vh] text-muted-foreground">
-        Please select a campaign with creatives
-      </div>
-    )
-  }
-
-  // Update selectedCreative state when creative changes
-  useEffect(() => {
-    setSelectedCreative(creative)
-  }, [creative])
-
-  // Define sentimentMetrics after selectedCreative is set
   const metrics = [
     { label: 'Target Audience Match', value: selectedCreative?.mirofish.target_audience_match || 0 },
     { label: 'Emotional Resonance', value: selectedCreative?.mirofish.emotional_resonance || 0 },
@@ -241,43 +231,54 @@ function MiroFishContent() {
         </CardContent>
       </Card>
 
+      {/* MiroFish Data Status */}
+      {!hasMiroFishData && (
+        <div className="p-6 bg-muted/30 border border-dashed border-muted-foreground/20 rounded-lg text-center">
+          <p className="text-muted-foreground">
+            No MiroFish data available for this creative
+          </p>
+        </div>
+      )}
+
       {/* Sentiment Metrics - Preserved from original */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="text-base">Sentiment Metrics</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {/* Gauge charts */}
-          <div className="flex justify-center gap-12 mb-8">
-            <GaugeChart value={selectedCreative.mirofish.virality_score} label="Virality Score" />
-            <GaugeChart value={selectedCreative.mirofish.positive_sentiment} label="Positive Sentiment" />
-          </div>
-
-          {/* Metric bars */}
-          <div className="grid gap-4 md:grid-cols-2">
-            {metrics.map((metric) => (
-              <MetricBar
-                key={metric.label}
-                label={metric.label}
-                value={metric.value}
-                showPercentage
-                colorClass={metric.value >= 0.7 ? 'bg-indigo' : 'bg-amber-500'}
-              />
-            ))}
-          </div>
-
-          {/* Grade badge */}
-          <div className="mt-6 pt-6 border-t flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Social Score</p>
-              <p className="text-3xl font-mono font-semibold">{(selectedCreative.mirofish.social_score * 100).toFixed(0)}%</p>
+      {hasMiroFishData && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="text-base">Sentiment Metrics</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {/* Gauge charts */}
+            <div className="flex justify-center gap-12 mb-8">
+              <GaugeChart value={selectedCreative.mirofish.virality_score} label="Virality Score" />
+              <GaugeChart value={selectedCreative.mirofish.positive_sentiment} label="Positive Sentiment" />
             </div>
-            <div className="px-4 py-2 bg-indigo/10 rounded-lg border border-indigo/20">
-              <span className="text-2xl font-bold text-indigo">{selectedCreative.mirofish.grade}</span>
+
+            {/* Metric bars */}
+            <div className="grid gap-4 md:grid-cols-2">
+              {metrics.map((metric) => (
+                <MetricBar
+                  key={metric.label}
+                  label={metric.label}
+                  value={metric.value}
+                  showPercentage
+                  colorClass={metric.value >= 0.7 ? 'bg-indigo' : 'bg-amber-500'}
+                />
+              ))}
             </div>
-          </div>
-        </CardContent>
-      </Card>
+
+            {/* Grade badge */}
+            <div className="mt-6 pt-6 border-t flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Social Score</p>
+                <p className="text-3xl font-mono font-semibold">{(selectedCreative.mirofish.social_score * 100).toFixed(0)}%</p>
+              </div>
+              <div className="px-4 py-2 bg-indigo/10 rounded-lg border border-indigo/20">
+                <span className="text-2xl font-bold text-indigo">{selectedCreative.mirofish.grade}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* AI Analysis */}
       <AIAnalysis {...aiAnalysis.mirofish} />

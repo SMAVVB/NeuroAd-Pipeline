@@ -10,6 +10,11 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { Trophy, Download, FileJson, Medal, CheckCircle, Lightbulb } from 'lucide-react'
 
+// Helper to format creative name: "apple_pay_outrun" -> "Apple Pay Outrun"
+function formatCreativeName(name: string): string {
+  return name.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())
+}
+
 // Module types for scoring
 type ModuleScore = {
   name: string
@@ -49,7 +54,10 @@ function generateExecutiveSummary(creatives: any[]): string {
   // Format score as percentage
   const formatScore = (s: number) => Math.round(s * 100).toString()
 
-  return `${winner.name} leads with ${formatScore(winner.overall_score)}% overall score. Strongest module: ${best.label} (${formatScore(best.score)}%). Weakest module: ${weakest.label} (${formatScore(weakest.score)}%).`
+  // Format creative name: "apple_pay_outrun" -> "Apple Pay Outrun"
+  const formattedWinnerName = winner.name.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())
+
+  return `${formattedWinnerName} leads with ${formatScore(winner.overall_score)}% overall score. Strongest module: ${best.label} (${formatScore(best.score)}%). Weakest module: ${weakest.label} (${formatScore(weakest.score)}%).`
 }
 
 function ReportContent() {
@@ -131,7 +139,7 @@ function ReportContent() {
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-3 mb-2">
-                        <h3 className="font-semibold">{creative.name}</h3>
+                        <h3 className="font-semibold">{formatCreativeName(creative.name)}</h3>
                         {isWinner && (
                           <Badge className="bg-amber-500 hover:bg-amber-600">Winner</Badge>
                         )}
