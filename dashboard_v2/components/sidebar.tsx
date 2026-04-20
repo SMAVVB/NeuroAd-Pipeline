@@ -113,9 +113,18 @@ export function Sidebar() {
                     // Derive brand name from campaign names: "apple_vs_samsung" -> "Apple vs Samsung"
                     const campaignForBrand = availableCampaigns.find((c) => c.brandId === brandId)
                     if (!campaignForBrand) return null
+                    // Get first campaign name to derive emoji
+                    const firstCampaignName = campaignForBrand.name.toLowerCase()
+                    let brandEmoji = '🏢'
+                    if (firstCampaignName.includes('apple')) brandEmoji = '🍎'
+                    else if (firstCampaignName.includes('samsung')) brandEmoji = '📱'
+                    else if (firstCampaignName.includes('google')) brandEmoji = '🔍'
+                    else if (firstCampaignName.includes('sony')) brandEmoji = '🎮'
+                    else if (firstCampaignName.includes('nintendo')) brandEmoji = '🕹️'
                     const brandName = String(brandId).replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
                     return (
                       <SelectItem key={brandId} value={brandId}>
+                        <span className="mr-2">{brandEmoji}</span>
                         {brandName}
                       </SelectItem>
                     )
@@ -143,7 +152,7 @@ export function Sidebar() {
                   <SelectContent>
                     {availableCampaigns.map((campaign) => (
                       <SelectItem key={campaign.id} value={campaign.id}>
-                        {campaign.name}
+                        {campaign.name.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
                       </SelectItem>
                     ))}
                   </SelectContent>
