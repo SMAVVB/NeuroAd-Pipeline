@@ -4,7 +4,7 @@ import { DashboardLayout } from '@/components/dashboard-layout'
 import { PageHeader } from '@/components/page-header'
 import { MetricBar } from '@/components/metric-bar'
 import { AIAnalysis } from '@/components/ai-analysis'
-import { BrainViewer } from '@/components/brain-viewer'
+import dynamic from 'next/dynamic'
 import { useDashboard } from '@/lib/dashboard-context'
 import { aiAnalysis } from '@/lib/data'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -17,6 +17,8 @@ import {
 import { Button } from '@/components/ui/button'
 import { ChevronDown, Activity, Zap } from 'lucide-react'
 import { useState } from 'react'
+
+const BrainViewer = dynamic(() => import('@/components/brain-viewer').then(m => ({ default: m.BrainViewer })), { ssr: false })
 
 const brainRegions = [
   { id: 'temporal', name: 'Temporal Lobe', function: 'Face Response', x: 75, y: 55 },

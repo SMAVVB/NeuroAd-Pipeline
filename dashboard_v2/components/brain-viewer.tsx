@@ -95,6 +95,13 @@ export function BrainViewer({ tribeScores, size = 'md' }: BrainViewerProps) {
   const controlsRef = useRef<any | null>(null)
   const animationRef = useRef<number | undefined>(undefined)
   const isDraggingRef = useRef(false)
+  // Ref to track current scores for the animation loop
+  const tribeScoresRef = useRef(tribeScores)
+
+  // Update scores ref when tribeScores changes
+  useEffect(() => {
+    tribeScoresRef.current = tribeScores
+  }, [tribeScores])
 
   // Create stylized brain using geometries
   useEffect(() => {
@@ -236,6 +243,21 @@ export function BrainViewer({ tribeScores, size = 'md' }: BrainViewerProps) {
         brainGroup.rotation.y = targetRotationY
       }
 
+      // Update ROI colors dynamically based on current scores
+      if (roiSpheresRef.current.length > 0) {
+        roiSpheresRef.current.forEach(sphere => {
+          const roiKey = sphere.userData.roiKey as string
+          const scoreKey = roiKey as keyof typeof tribeScores
+          const score = tribeScoresRef.current[scoreKey] ?? 0
+          const color = getScoreColor(score)
+
+          const material = sphere.material as THREE.MeshStandardMaterial
+          material.color.set(color)
+          material.emissive.set(color)
+          material.emissiveIntensity = score > 0.18 ? 0.3 : 0.15
+        })
+      }
+
       controlsRef.current?.update(null)
       renderer.render(scene, camera)
     }
@@ -276,22 +298,6 @@ export function BrainViewer({ tribeScores, size = 'md' }: BrainViewerProps) {
       renderer.dispose()
     }
   }, [])
-
-  // Update ROI colors based on scores
-  useEffect(() => {
-    roiSpheresRef.current.forEach(sphere => {
-      const roiKey = sphere.userData.roiKey as string
-      const scoreKey = roiKey as keyof typeof tribeScores
-      const score = tribeScores[scoreKey] ?? 0
-      const color = getScoreColor(score)
-
-      // Type assertion for MeshStandardMaterial
-      const material = sphere.material as THREE.MeshStandardMaterial
-      material.color.set(color)
-      material.emissive.set(color)
-      material.emissiveIntensity = score > 0.18 ? 0.3 : 0.15
-    })
-  }, [tribeScores])
 
   return (
     <div
