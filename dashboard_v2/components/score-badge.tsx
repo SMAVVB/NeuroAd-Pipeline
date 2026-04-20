@@ -63,7 +63,7 @@ export function LargeScoreDisplay({
   return (
     <div className="flex flex-col items-center gap-2">
       <div className="font-mono text-5xl font-bold tracking-tight">
-        {(score * 100).toFixed(0)}
+        {(score * 100).toFixed(0)}%
       </div>
       <div className={cn(
         "px-3 py-1 rounded-md border text-sm font-bold",
