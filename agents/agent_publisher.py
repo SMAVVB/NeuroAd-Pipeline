@@ -160,6 +160,7 @@ Aspekte die abgedeckt werden sollen: {', '.join(pillar['aspects'])}
 Gib NUR ein JSON zurück: {{"queries": ["query1", "query2", ...]}}"""
     
     response = ask_llm(prompt, "Generiere Pillar-Queries.", MODEL_WORKHORSE)
+    time.sleep(1)  # Kurze Pause nach LLM-Call
     json_match = re.search(r'\{.*\}', response, re.DOTALL)
     if json_match:
         try:
@@ -176,6 +177,7 @@ Fokus auf historische Ereignisse, Veränderungen und Entwicklungen in diesem Zei
 Gib NUR ein JSON zurück: {{"queries": ["query1", "query2", ...]}}"""
     
     response = ask_llm(prompt, "Generiere historische Queries.", MODEL_WORKHORSE)
+    time.sleep(1)  # Kurze Pause nach LLM-Call
     json_match = re.search(r'\{.*\}', response, re.DOTALL)
     if json_match:
         try:
@@ -195,6 +197,7 @@ Fokus auf lokale News, lokale Kontroversen, lokale Vertriebspartner, lokale Kamp
 Gib NUR ein JSON zurück: {{"queries": ["query1", "query2", ...]}}"""
     
     response = ask_llm(prompt, "Generiere Markt-Queries.", MODEL_WORKHORSE)
+    time.sleep(1)  # Kurze Pause nach LLM-Call
     json_match = re.search(r'\{.*\}', response, re.DOTALL)
     if json_match:
         try:
@@ -212,6 +215,7 @@ Beispiele: "{brand} {year} Umsatz", "{brand} Kampagne {year}", "site:reddit.com 
 Gib NUR JSON zurück: {{"queries": ["query1", "query2", ...]}}"""
     
     response = ask_llm(prompt, "Generiere Jahres-Queries.", MODEL_WORKHORSE)
+    time.sleep(1)  # Kurze Pause nach LLM-Call
     json_match = re.search(r'\{.*\}', response, re.DOTALL)
     if json_match:
         try:

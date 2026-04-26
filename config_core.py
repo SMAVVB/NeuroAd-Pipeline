@@ -1,116 +1,86 @@
 import os
-import json
 import requests
+import json
 import time
-from datetime import datetime
-from pathlib import Path
+from dotenv import load_dotenv
 
-# --- KONFIGURATION ---
-# LLM_URL: Proxy für Token Tracking (Port 8888) → Lemonade (Port 8888)
-LLM_URL = "http://127.0.0.1:9003/v1/chat/completions"
-SEARXNG_URL = "http://127.0.0.1:8889/search"
-RAW_DATA_DIR = "raw_data" 
+load_dotenv()
 
-MODEL_WORKHORSE = "extra.gemma-4-31B-it-Q4_K_M.gguf"
-MODEL_JUDGE = "extra.DeepSeek-R1-Distill-Llama-70B-Q4_K_M.gguf"
-MODEL_FAST = "extra.moonshotai_Kimi-Linear-48B-A3B-Instruct-Q5_K_M.gguf"
-MEMORY_FILE = "agent_learnings.json"
+# --- VERZEICHNISSE (Original-Struktur) ---
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+RAW_DATA_DIR = os.path.join(BASE_DIR, "raw_data")
+CAMPAIGNS_DIR = os.path.join(BASE_DIR, "campaigns")
+LOG_DIR = os.path.join(BASE_DIR, "logs")
 
-def load_memory() -> str:
-    if not os.path.exists(MEMORY_FILE):
-        default_rules = {
-            "hard_rules": [
-                "Generiere NIEMALS ganze Fragesätze.",
-                "Nutze ausschließlich kurze, präzise Keywords."
-            ]
-        }
-        with open(MEMORY_FILE, "w", encoding="utf-8") as f:
-            json.dump(default_rules, f, indent=2)
-        return "\n".join(default_rules["hard_rules"])
+# --- API & ENDPUNKTE (Nur hier wurde geändert) ---
+OPENAI_API_KEY = "ollama"
+OPENAI_API_BASE = "http://127.0.0.1:11434/v1"
+SEARXNG_URL = "http://127.0.0.1:8889"
+
+# --- MODELLE (Alle auf Qwen 3.6 35B umgebogen) ---
+MODEL_WORKHORSE = "qwen3.6:35b-a3b-q4_K_M"
+MODEL_FAST = "qwen3.6:35b-a3b-q4_K_M"
+MODEL_JUDGE = "qwen3.6:35b-a3b-q4_K_M"
+MODEL_VISION = "qwen3.6:35b-a3b-q4_K_M"
+
+# --- KERN-FUNKTIONEN ---
+
+def ask_llm(prompt, context_msg="System", model=MODEL_WORKHORSE):
+    """Zentrale LLM-Anfrage (OpenAI-kompatibel via Ollama)"""
+    url = f"{OPENAI_API_BASE}/chat/completions"
+    headers = {"Content-Type": "application/json"}
     
-    with open(MEMORY_FILE, "r", encoding="utf-8") as f:
-        return "\n".join(json.load(f).get("hard_rules", []))
-
-def ask_llm(system_prompt: str, user_prompt: str, model_name: str, temperature: float = 0.2, max_retries: int = 3, timeout_override: int = None) -> str:
-    memory_rules = load_memory()
-    enhanced_system = f"{system_prompt}\n\nWICHTIGE LERN-REGELN:\n{memory_rules}"
-
-    payload = {
-        "model": model_name,
+    data = {
+        "model": model,
         "messages": [
-            {"role": "system", "content": enhanced_system},
-            {"role": "user", "content": user_prompt}
+            {"role": "system", "content": context_msg},
+            {"role": "user", "content": prompt}
         ],
-        "temperature": temperature,
-        "max_tokens": 4096
+        "temperature": 0.7,
+        "max_tokens": 2048 # VRAM Schutz
     }
 
-    # AUTO-RETRY LOOP
-    for attempt in range(max_retries):
+    for attempt in range(1, 16):
         try:
-            # Nutze timeout_override wenn gesetzt, sonst Standard-Timeout von 1200 Sekunden (20 Minuten)
-            timeout = timeout_override if timeout_override is not None else 1200
-            res = requests.post(LLM_URL, json=payload, timeout=timeout)
-            res.raise_for_status()
-            data = res.json()
-
-            # Hat der API-Server intern einen Error in das JSON geschrieben? (Wie bei deinem Curl-Error)
-            if "error" in data:
-                print(f"\n⚠️ API-SERVER FEHLER (Versuch {attempt+1}/{max_retries}): {data['error']}")
-                time.sleep(5) # 5 Sekunden abkühlen
-                continue      # Nächster Versuch!
-
-            content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
-
-            # Token logging after successful API call
-            try:
-                usage = data.get("usage", {})
-                log_entry = {
-                    "timestamp": datetime.now().isoformat(),
-                    "model": model_name,
-                    "input_tokens": usage.get("prompt_tokens", 0),
-                    "output_tokens": usage.get("completion_tokens", 0),
-                    "project": os.path.basename(os.getcwd()),
-                    "tps": usage.get("tokens_per_second", 0)
+            response = requests.post(url, headers=headers, json=data, timeout=120)
+            
+            # Falls der v1-Wrapper von Ollama zickt, Fallback auf nativ
+            if response.status_code == 404:
+                native_url = "http://127.0.0.1:11434/api/chat"
+                native_data = {
+                    "model": model,
+                    "messages": [{"role": "user", "content": f"{context_msg}\n{prompt}"}],
+                    "stream": False
                 }
-                log_file = Path.home() / ".lemonade_token_log.jsonl"
-                with open(log_file, "a", encoding="utf-8") as f:
-                    f.write(json.dumps(log_entry) + "\n")
-            except Exception:
-                pass  # Don't fail if logging fails
-
-            if not content.strip():
-                print(f"\n⚠️ ALARM: Leere Antwort vom Modell (Versuch {attempt+1}/{max_retries}).")
-                time.sleep(5)
-                continue
-
-            return content
-
+                response = requests.post(native_url, json=native_data, timeout=120)
+            
+            response.raise_for_status()
+            res_json = response.json()
+            
+            # Ergebnis extrahieren (je nach Endpunkt-Struktur)
+            if 'choices' in res_json:
+                return res_json['choices'][0]['message']['content']
+            return res_json['message']['content']
+            
         except Exception as e:
-            print(f"\n❌ NETZWERK-FEHLER (Versuch {attempt+1}/{max_retries}): {e}")
-            time.sleep(5)
+            print(f"❌ NETZWERK-FEHLER (Versuch {attempt}/15): {e}")
+            if attempt == 15: raise e
+            time.sleep(2)
 
-    print("🚨 FEHLER: Alle Retries fehlgeschlagen. Breche LLM-Anfrage ab.")
-    return ""
-
-def search_searxng(query: str, category: str = "general") -> list:
-    print(f"   🔍 Suche: {query}")
-    params = {"q": query, "format": "json", "categories": category}
-    
-    forbidden_domains = ["github.com", "huggingface.co", "reddit.com", "stackexchange.com", "facebook.com"]
-    forbidden_extensions = [".pdf", ".docx", ".xlsx", ".zip"] 
-    
+def search_searxng(query):
+    """Web-Suche via SearxNG"""
     try:
-        res = requests.get(SEARXNG_URL, params=params, timeout=10)
-        res.raise_for_status()
-        
-        valid_urls = []
-        for r in res.json().get("results", []):
-            url = r.get("url", "")
-            url_lower = url.lower()
-            if not any(bad in url_lower for bad in forbidden_domains) and not any(url_lower.endswith(ext) for ext in forbidden_extensions):
-                valid_urls.append(url)
-                
-        return valid_urls[:20] 
-    except Exception:
+        response = requests.get(
+            f"{SEARXNG_URL}/search",
+            params={"q": query, "format": "json"},
+            timeout=10
+        )
+        response.raise_for_status()
+        return response.json().get("results", [])
+    except Exception as e:
+        print(f"⚠️ Search Error: {e}")
         return []
+
+# --- INITIALISIERUNG ---
+for d in [RAW_DATA_DIR, CAMPAIGNS_DIR, LOG_DIR]:
+    os.makedirs(d, exist_ok=True)

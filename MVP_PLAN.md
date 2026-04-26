@@ -32,7 +32,7 @@
 ## Infrastruktur & Konfiguration
 
 ### Lemonade Modelle
-- MODEL_WORKHORSE: extra.gemma-4-31B-it-Q4_K_M.gguf (~10-11 TPS)
+- MODEL_WORKHORSE: extra.SuperGemma4-31b-abliterated.Q4_K_M.gguf (~10-11 TPS)
 - MODEL_JUDGE:     extra.DeepSeek-R1-Distill-Llama-70B-Q4_K_M.gguf
 - MODEL_FAST:      extra.moonshotai_Kimi-Linear-48B-A3B-Instruct-Q5_K_M.gguf
 - Claude Code:     extra.Qwen3-Coder-Next-Q4_K_M.gguf (~45-50 TPS)

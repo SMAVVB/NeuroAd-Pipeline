@@ -16,7 +16,7 @@ SEARXNG_URL = "http://127.0.0.1:8889/search"
 RAW_DATA_DIR = "raw_data" 
 
 # Deine Next-Gen Modell-Flotte (mit extra.-Präfix für Lemonade)
-MODEL_WORKHORSE = "extra.gemma-4-31B-it-Q4_K_M.gguf"
+MODEL_WORKHORSE = "extra.SuperGemma4-31b-abliterated.Q4_K_M.gguf"
 MODEL_CRITIC = "extra.moonshotai_Kimi-Linear-48B-A3B-Instruct-Q5_K_M.gguf"
 MODEL_JUDGE = "extra.DeepSeek-R1-Distill-Llama-70B-Q4_K_M.gguf"
 
