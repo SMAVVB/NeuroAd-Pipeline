@@ -23,7 +23,7 @@ def analyze_error_with_llm(error_trace):
 
 def create_multica_ticket(error_summary, raw_trace):
     headers = {"Authorization": f"Bearer {MULTICA_API_KEY}", "Content-Type": "application/json"}
-    
+
     payload = {
         "workspace_slug": "the-beast",
         "project_id": "e07a5476-d4c2-4665-b1fc-1cf2d1b0ba69",
@@ -34,16 +34,64 @@ def create_multica_ticket(error_summary, raw_trace):
         "priority": "high",
         "status": "todo"
     }
-    
+
     url = "https://api.multica.ai/api/issues?workspace_slug=the-beast"
+    ticket_id = None
     try:
         r = requests.post(url, json=payload, headers=headers)
         if r.status_code in [200, 201]:
-            print(f"\n🚀 [WATCHDOG] Ticket erstellt und an den Universal-Agenten zugewiesen!")
+            response_data = r.json()
+            ticket_id = response_data.get("id")
+            print(f"\n🚀 [WATCHDOG] Ticket erstellt und an den Universal-Agenten zugewiesen! ID: {ticket_id}")
         else:
             print(f"\n❌ [WATCHDOG] Ticket-Fehler: {r.text}")
     except Exception as e:
         print(f"\n❌ [WATCHDOG] API-Fehler: {e}")
+
+    # Ticket-Abschluss abwarten mit Timeout von 160 Minuten
+    if ticket_id:
+        poll_watchdog_ticket(ticket_id)
+
+
+def poll_watchdog_ticket(ticket_id):
+    """Polls the Multica API to check if the ticket is resolved."""
+    timeout_seconds = 160 * 60  # 160 Minuten
+    poll_interval = 60  # 60 Sekunden
+    elapsed = 0
+
+    print(f"\n⏳ [WATCHDOG] Warte auf Ticket-Abschluss (Timeout: {timeout_seconds} Sekunden)...")
+
+    while elapsed < timeout_seconds:
+        try:
+            # Ticket status abfragen
+            status_url = f"https://api.multica.ai/api/issues/{ticket_id}?workspace_slug=the-beast"
+            headers = {"Authorization": f"Bearer {MULTICA_API_KEY}"}
+            r = requests.get(status_url, headers=headers)
+
+            if r.status_code == 200:
+                response_data = r.json()
+                status = response_data.get("status", "").lower()
+
+                # Prüfen auf Abschluss-Status
+                if status in ["done", "completed", "resolved", "closed"]:
+                    print(f"\n✅ [WATCHDOG] Ticket ist erledigt (Status: {status}). Starte Pipeline neu...")
+                    break
+                else:
+                    print(f"📋 [WATCHDOG] Ticket Status: {status} - warte {poll_interval} Sekunden...")
+            else:
+                print(f"⚠️ [WATCHDOG] Status-Abfrage fehlgeschlagen: {r.status_code} {r.text}")
+
+        except Exception as e:
+            print(f"⚠️ [WATCHDOG] API-Fehler bei Status-Abfrage: {e}")
+
+        # Wartezeit bis zur nächsten Abfrage
+        time.sleep(poll_interval)
+        elapsed += poll_interval
+
+    # Timeout erreicht
+    if elapsed >= timeout_seconds:
+        print(f"\n[FATAL] [WATCHDOG] Timeout von 160 Minuten erreicht. Ticket nicht rechtzeitig erledigt.")
+        sys.exit(1)
 
     # Pipeline nach der Ticket-Erstellung automatisch neu starten
     print(f"\n🔄 [WATCHDOG] Starte Pipeline neu via run_pipeline.sh...")
