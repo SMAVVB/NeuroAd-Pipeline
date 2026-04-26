@@ -45,6 +45,11 @@ def create_multica_ticket(error_summary, raw_trace):
     except Exception as e:
         print(f"\n❌ [WATCHDOG] API-Fehler: {e}")
 
+    # Pipeline nach der Ticket-Erstellung automatisch neu starten
+    print(f"\n🔄 [WATCHDOG] Starte Pipeline neu via run_pipeline.sh...")
+    os.system("bash run_pipeline.sh &")
+    sys.exit(0)
+
 def follow_log(filename):
     if not os.path.exists(filename): open(filename, 'w').close()
     with open(filename, "r", encoding="utf-8", errors="ignore") as file:
