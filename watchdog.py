@@ -3,9 +3,14 @@ import requests
 import json
 import os
 import sys
+import hashlib
 from dotenv import load_dotenv
 import os
 load_dotenv()
+
+# Loop guard configuration
+LOOP_GUARD_FILE = ".watchdog_loop_guard.json"
+MAX_RETRIES = 3
 
 # Konfiguration (Hier musst du nur deinen Key prüfen)
 LOG_FILE = "campaigns/nike_summer_26_run.log"
@@ -13,6 +18,42 @@ OLLAMA_URL = "http://localhost:11434/api/generate"
 WATCHDOG_MODEL = "qwen3.5:4b"
 MULTICA_API_URL = "https://api.multica.ai/api/issues?workspace_slug=the-beast"
 MULTICA_API_KEY = os.environ.get("MULTICA_API_KEY")
+
+
+def get_loop_guard_state(error_summary):
+    """Track error occurrences using MD5 hash of error_summary.
+    Returns (current_count, is_loop) tuple.
+    """
+    error_hash = hashlib.md5(error_summary.encode('utf-8')).hexdigest()
+
+    # Load existing state
+    state = {}
+    if os.path.exists(LOOP_GUARD_FILE):
+        try:
+            with open(LOOP_GUARD_FILE, 'r') as f:
+                state = json.load(f)
+        except:
+            state = {}
+
+    # Check if this is the same error as before
+    if state.get("last_hash") == error_hash:
+        current_count = state.get("count", 0) + 1
+    else:
+        current_count = 1
+
+    # Update state
+    state["last_hash"] = error_hash
+    state["count"] = current_count
+
+    # Write state file
+    try:
+        with open(LOOP_GUARD_FILE, 'w') as f:
+            json.dump(state, f, indent=2)
+    except Exception as e:
+        print(f"[WATCHDOG] Could not write loop guard file: {e}")
+
+    return current_count, current_count >= MAX_RETRIES
+
 
 def analyze_error_with_llm(error_trace):
     prompt = f"Analysiere diesen Crash: {error_trace}. Antworte nur JSON: {{\"is_critical\": true, \"summary\": \"kurze Erklärung\"}}"
@@ -22,6 +63,13 @@ def analyze_error_with_llm(error_trace):
     except: return '{"is_critical": false}'
 
 def create_multica_ticket(error_summary, raw_trace):
+    # Check for infinite loop before creating ticket
+    current_count, is_loop = get_loop_guard_state(error_summary)
+
+    if is_loop:
+        print(f"\n🛑 [FATAL] INFINITE LOOP DETECTED - Same error {current_count}/{MAX_RETRIES} times. Stopping watchdog immediately.")
+        sys.exit(1)
+
     headers = {"Authorization": f"Bearer {MULTICA_API_KEY}", "Content-Type": "application/json"}
 
     payload = {
@@ -29,7 +77,7 @@ def create_multica_ticket(error_summary, raw_trace):
         "project_id": "e07a5476-d4c2-4665-b1fc-1cf2d1b0ba69",
         "assignee_type": "agent",
         "assignee_id": "710707d6-2484-4bd3-888a-7da10b6684f1",
-        "title": f"🚨 Fix Needed: {error_summary}",
+        "title": f"🚨 Fix Needed ({current_count}/{MAX_RETRIES}): {error_summary}",
         "description": f"### Pipeline Crash Report\n\n**Fehler-Details:**\n```text\n{raw_trace}\n```",
         "priority": "high",
         "status": "todo"
