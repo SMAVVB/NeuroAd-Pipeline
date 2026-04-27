@@ -78,7 +78,7 @@ def create_multica_ticket(error_summary, raw_trace):
         "assignee_type": "agent",
         "assignee_id": "710707d6-2484-4bd3-888a-7da10b6684f1",
         "title": f"🚨 Fix Needed ({current_count}/{MAX_RETRIES}): {error_summary}",
-        "description": f"### Pipeline Crash Report\n\n**Fehler-Details:**\n```text\n{raw_trace}\n```",
+        "description": f"### Pipeline Crash Report\n\n**Fehler-Details:**\n```text\n{raw_trace}\n```\n\n### MANDATORY FIX VERIFICATION\n\n**DU MUSST nach deinem Fix folgendes tun:**\n\n1. Erstelle ein kleines Test-Skript `verify_fix.py` im Root-Verzeichnis des Projekts\n2. Dieses Skript MUSS die reparierte Funktion isoliert aufrufen und testen\n3. Das Skript MUSS mit Exit-Code 0 enden, wenn der Test erfolgreich ist\n4. Ohne erfolgreiches `verify_fix.py` wird die Pipeline NICHT neu gestartet!",
         "priority": "high",
         "status": "todo"
     }
@@ -142,6 +142,18 @@ def poll_watchdog_ticket(ticket_id):
         sys.exit(1)
 
     # Pipeline nach der Ticket-Erstellung automatisch neu starten
+    # Zuerst prüfen, ob verify_fix.py existiert
+    if os.path.exists("verify_fix.py"):
+        print(f"\n🔍 [WATCHDOG] Verifizierungsskript 'verify_fix.py' gefunden - führe Test aus...")
+        test_exit_code = os.system("python3 verify_fix.py")
+        if test_exit_code != 0:
+            print(f"\n❌ [FATAL] [WATCHDOG] Verifizierung fehlgeschlagen (Exit-Code: {test_exit_code})!")
+            print("[FATAL] [WATCHDOG] Abbruch - Pipeline wird nicht neu gestartet ohne erfolgreichen Test.")
+            sys.exit(1)
+        print(f"\n✅ [WATCHDOG] Verifizierung erfolgreich (Exit-Code: {test_exit_code})")
+    else:
+        print(f"\n⚠️ [WATCHDOG] Kein 'verify_fix.py' gefunden - Überspringe Verifizierung")
+
     print(f"\n🔄 [WATCHDOG] Starte Pipeline neu via run_pipeline.sh...")
     os.system("bash run_pipeline.sh &")
     sys.exit(0)
