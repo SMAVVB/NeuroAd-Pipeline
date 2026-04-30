@@ -140,6 +140,11 @@ class MiroFishClient:
                 data = response.json()
                 
                 if not data.get("success", False):
+                    # Check if the simulation itself has a failed status embedded
+                    status = data.get("data", {}).get("status", "")
+                    if status in ("failed", "error"):
+                        error_details = data.get("data", {}).get("error", "Unknown error")
+                        raise RuntimeError(f"MiroFish simulation failed: {error_details}")
                     logger.warning(f"[MiroFishClient] Preparation status check failed: {response.text}")
                     time.sleep(5)
                     continue
@@ -152,6 +157,9 @@ class MiroFishClient:
                     break
                 elif status == "preparing":
                     time.sleep(5)  # Wait before next poll
+                elif status in ("failed", "error"):
+                    error_details = data.get("data", {}).get("error", "Unknown error")
+                    raise RuntimeError(f"MiroFish simulation failed: {error_details}")
                 else:
                     # Unknown status, log full response for debugging
                     logger.error(f"[MiroFishClient] Unexpected status: {status}")
@@ -227,6 +235,11 @@ class MiroFishClient:
                 data = response.json()
                 
                 if not data.get("success", False):
+                    # Check if the task itself has a failed status embedded
+                    status = data.get("data", {}).get("status", "")
+                    if status in ("failed", "error"):
+                        error_details = data.get("data", {}).get("error", response.text)
+                        raise RuntimeError(f"Graph build failed: {error_details}")
                     logger.warning(f"[MiroFishClient] Graph task status check failed: {response.text}")
                     continue
                 
@@ -326,6 +339,11 @@ class MiroFishClient:
                 data = response.json()
 
                 if not data.get("success", False):
+                    # Check if the simulation itself has a failed status embedded
+                    status = data.get("data", {}).get("status", "")
+                    if status in ("failed", "error"):
+                        error_details = data.get("data", {}).get("error", response.text)
+                        raise RuntimeError(f"Simulation failed: {error_details}")
                     logger.warning(f"[MiroFishClient] Status check failed: {response.text}")
                     continue
 
