@@ -48,7 +48,7 @@ Das Protokoll soll die wichtigsten Erkenntnisse der Prüfung zusammenfassen.
 
 Format: Reines Markdown, keine JSON-Ausgabe."""
 
-    audit_result = ask_llm(audit_prompt, "Erstelle das Management-Summary.", MODEL_FAST, timeout_override=1800)
+    audit_result = ask_llm(audit_prompt, "Erstelle das Management-Summary.", MODEL_FAST)
 
     audit_path = os.path.join(save_dir, "Phase_5_Council_Audit.md")
     with open(audit_path, "w", encoding="utf-8") as f:
