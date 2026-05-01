@@ -2,8 +2,16 @@ import sys
 import os
 import asyncio
 import subprocess
+import gc
 from datetime import datetime
 from config_core import RAW_DATA_DIR
+
+# Torch import (optional — used for GPU memory cleanup)
+_torch = None
+try:
+    import torch as _torch
+except ImportError:
+    pass
 
 # ChromaDB Installation check (VOR allem anderen!)
 try:
@@ -22,6 +30,18 @@ from agents.agent_scraper import run_mass_scraper
 from agents.agent_storm import build_storm_wikipedia
 from agents.agent_council import run_council_review
 from brand_profile import build_brand_profile
+
+
+def cleanup_phases():
+    """Aggressive garbage collection to free RAM between pipeline phases."""
+    gc.collect()
+    if _torch is not None:
+        try:
+            _torch.cuda.empty_cache()
+        except Exception:
+            pass
+    print("[Memory] Ran Garbage Collection")
+
 
 async def main(brand: str):
     """
@@ -85,7 +105,9 @@ async def main(brand: str):
             f.write(f"URL: HackerNews\n\n{social_data['hn_text']}")
     
     print(f"\n📚 Wissenschafts-Sweep: {len(science_urls)} Paper-URLs")
-    
+
+    cleanup_phases()
+
     # Alle URLs zusammenführen
     all_urls_to_scrape = (publisher_urls +
         social_data.get("youtube_urls", []) +
@@ -100,11 +122,15 @@ async def main(brand: str):
     
     # 4. MASS SCRAPING (Führt News/Science URLs und OSINT-Social-URLs zusammen!)
     await run_mass_scraper(all_urls_to_scrape, save_dir)
-    
+
+    cleanup_phases()
+
     # 4. RAG-Engine & 5. Council Audit
     build_storm_wikipedia(brand, save_dir, seed_content=seed_content, brand_profile=brand_profile)
     run_council_review(brand, save_dir)
-    
+
+    cleanup_phases()
+
     print(f"\n✅ PIPELINE KOMPLETT ABGESCHLOSSEN! Alle Ergebnisse in: {save_dir}")
 
 if __name__ == "__main__":
