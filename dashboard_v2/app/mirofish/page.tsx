@@ -17,6 +17,59 @@ import { ChevronDown } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import MiroFishGraph, { type GraphData } from '@/components/mirofish-graph'
 
+// Generate agent graph data from MiroFish sentiment data
+function generateAgentGraphData(mirofishData: any): GraphData {
+  const numAgents = 18 // Generate 18 agent nodes
+
+  const nodes: any[] = []
+  for (let i = 0; i < numAgents; i++) {
+    const agentNum = i + 1
+    const agentId = `agent-${agentNum.toString().padStart(2, '0')}`
+
+    // Generate agent-specific sentiment values centered around MiroFish scores
+    const sentimentVariance = (Math.random() - 0.5) * 0.3
+    const controversyVariance = (Math.random() - 0.5) * 0.2
+
+    const agentPositiveSentiment = Math.min(1, Math.max(0, mirofishData.positive_sentiment + sentimentVariance))
+    const agentControversyRisk = Math.min(1, Math.max(0, mirofishData.controversy_risk + controversyVariance))
+    const agentViralityScore = Math.min(1, Math.max(0, mirofishData.virality_score + (Math.random() - 0.5) * 0.2))
+
+    nodes.push({
+      id: agentId,
+      name: `Agent_${agentNum.toString().padStart(2, '0')}`,
+      positiveSentiment: agentPositiveSentiment,
+      controversyRisk: agentControversyRisk,
+      viralityScore: agentViralityScore,
+    })
+  }
+
+  // Create edges: connect approximately 30% of nodes randomly
+  const edges: any[] = []
+  const edgeSet = new Set<string>()
+
+  nodes.forEach((sourceNode, sourceIndex) => {
+    const numConnections = 2 + Math.floor(Math.random() * 3)
+
+    for (let i = 0; i < numConnections; i++) {
+      const targetIndex = Math.floor(Math.random() * numAgents)
+      if (targetIndex !== sourceIndex) {
+        const targetNode = nodes[targetIndex]
+        const edgeKey = [sourceNode.id, targetNode.id].sort().join('-')
+
+        if (!edgeSet.has(edgeKey)) {
+          edgeSet.add(edgeKey)
+          edges.push({
+            source: sourceNode,
+            target: targetNode,
+          })
+        }
+      }
+    }
+  })
+
+  return { nodes, edges }
+}
+
 function GaugeChart({ value, label, max = 1 }: { value: number; label: string; max?: number }) {
   const percentage = (value / max) * 100
   const rotation = (percentage / 100) * 180 - 90
@@ -69,42 +122,57 @@ function MiroFishContent() {
   const [isExplainerOpen, setIsExplainerOpen] = useState(false)
   const [graphData, setGraphData] = useState<GraphData | undefined>(undefined)
   const [loadingGraph, setLoadingGraph] = useState(false)
+  const [hasGraphError, setHasGraphError] = useState(false)
 
-  const selectedCreative = availableCreatives.find(c => c.id === selectedCreativeId) || availableCreatives[0]
+  // Calculate selectedCreative directly from availableCreatives and selectedCreativeId
+  // This avoids race conditions with local state synchronization
+  const creative = availableCreatives.find(c => c.id === selectedCreativeId) || availableCreatives[0]
 
-  if (!selectedCreative) {
-    return (
-      <div className="flex items-center justify-center h-[60vh] text-muted-foreground">
-        Please select a campaign with creatives
-      </div>
-    )
-  }
+  // Calculate selectedCreative for graph data fetching
+  const selectedCreative = creative
+
+  // Check if MiroFish data is available for this creative
+  const hasMiroFishData = selectedCreative && (
+    (selectedCreative.mirofish.positive_sentiment ?? 0) > 0 ||
+    (selectedCreative.mirofish.virality_score ?? 0) > 0 ||
+    (selectedCreative.mirofish.social_score ?? 0) > 0
+  )
 
   // Fetch MiroFish graph data
   useEffect(() => {
     const fetchGraphData = async () => {
       try {
         setLoadingGraph(true)
-        const response = await fetch(`/api/campaigns/${selectedCreative.name}/mirofish`)
+        setHasGraphError(false)
+        const response = await fetch(`/api/campaigns/${selectedCreative?.name}/mirofish`)
         if (response.ok) {
           const data = await response.json()
           setGraphData(data)
+        } else {
+          // FastAPI returned error - use generated agent data
+          setHasGraphError(true)
+          setGraphData(generateAgentGraphData(selectedCreative?.mirofish || {}))
         }
       } catch (error) {
         console.error('Failed to fetch graph data:', error)
+        // Network error - use generated agent data
+        setHasGraphError(true)
+        setGraphData(generateAgentGraphData(selectedCreative?.mirofish || {}))
       } finally {
         setLoadingGraph(false)
       }
     }
 
-    fetchGraphData()
-  }, [selectedCreative.name])
+    if (selectedCreative) {
+      fetchGraphData()
+    }
+  }, [selectedCreative?.name])
 
-  const sentimentMetrics = [
-    { label: 'Target Audience Match', value: selectedCreative.mirofish.target_audience_match },
-    { label: 'Emotional Resonance', value: selectedCreative.mirofish.emotional_resonance },
-    { label: 'Shareability', value: selectedCreative.mirofish.shareability },
-    { label: 'Brand Affinity', value: selectedCreative.mirofish.brand_affinity },
+  const metrics = [
+    { label: 'Target Audience Match', value: selectedCreative?.mirofish.target_audience_match || 0 },
+    { label: 'Emotional Resonance', value: selectedCreative?.mirofish.emotional_resonance || 0 },
+    { label: 'Shareability', value: selectedCreative?.mirofish.shareability || 0 },
+    { label: 'Brand Affinity', value: selectedCreative?.mirofish.brand_affinity || 0 },
   ]
 
   return (
@@ -150,51 +218,67 @@ function MiroFishContent() {
 
       {/* MiroFish Graph Visualization */}
       <Card className="mb-6">
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">Entity Relationship Graph</CardTitle>
+          {hasGraphError && (
+            <span className="text-xs px-2 py-1 bg-amber-100 text-amber-700 rounded-full">
+              Fallback Data
+            </span>
+          )}
         </CardHeader>
         <CardContent className="h-[600px]">
           <MiroFishGraph graphData={graphData} loading={loadingGraph} height={600} />
         </CardContent>
       </Card>
 
+      {/* MiroFish Data Status */}
+      {!hasMiroFishData && (
+        <div className="p-6 bg-muted/30 border border-dashed border-muted-foreground/20 rounded-lg text-center">
+          <p className="text-muted-foreground">
+            No MiroFish data available for this creative
+          </p>
+        </div>
+      )}
+
       {/* Sentiment Metrics - Preserved from original */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="text-base">Sentiment Metrics</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {/* Gauge charts */}
-          <div className="flex justify-center gap-12 mb-8">
-            <GaugeChart value={selectedCreative.mirofish.virality_score} label="Virality Score" />
-            <GaugeChart value={selectedCreative.mirofish.positive_sentiment} label="Positive Sentiment" />
-          </div>
-
-          {/* Metric bars */}
-          <div className="grid gap-4 md:grid-cols-2">
-            {sentimentMetrics.map((metric) => (
-              <MetricBar
-                key={metric.label}
-                label={metric.label}
-                value={metric.value}
-                showPercentage
-                colorClass={metric.value >= 0.7 ? 'bg-indigo' : 'bg-amber-500'}
-              />
-            ))}
-          </div>
-
-          {/* Grade badge */}
-          <div className="mt-6 pt-6 border-t flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Social Score</p>
-              <p className="text-3xl font-mono font-semibold">{(selectedCreative.mirofish.social_score * 100).toFixed(0)}%</p>
+      {hasMiroFishData && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="text-base">Sentiment Metrics</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {/* Gauge charts */}
+            <div className="flex justify-center gap-12 mb-8">
+              <GaugeChart value={selectedCreative.mirofish.virality_score} label="Virality Score" />
+              <GaugeChart value={selectedCreative.mirofish.positive_sentiment} label="Positive Sentiment" />
             </div>
-            <div className="px-4 py-2 bg-indigo/10 rounded-lg border border-indigo/20">
-              <span className="text-2xl font-bold text-indigo">{selectedCreative.mirofish.grade}</span>
+
+            {/* Metric bars */}
+            <div className="grid gap-4 md:grid-cols-2">
+              {metrics.map((metric) => (
+                <MetricBar
+                  key={metric.label}
+                  label={metric.label}
+                  value={metric.value}
+                  showPercentage
+                  colorClass={metric.value >= 0.7 ? 'bg-indigo' : 'bg-amber-500'}
+                />
+              ))}
             </div>
-          </div>
-        </CardContent>
-      </Card>
+
+            {/* Grade badge */}
+            <div className="mt-6 pt-6 border-t flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Social Score</p>
+                <p className="text-3xl font-mono font-semibold">{(selectedCreative.mirofish.social_score * 100).toFixed(0)}%</p>
+              </div>
+              <div className="px-4 py-2 bg-indigo/10 rounded-lg border border-indigo/20">
+                <span className="text-2xl font-bold text-indigo">{selectedCreative.mirofish.grade}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* AI Analysis */}
       <AIAnalysis {...aiAnalysis.mirofish} />

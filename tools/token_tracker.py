@@ -121,7 +121,7 @@ def fetch_api_stats() -> dict:
     """Fetch current stats from Lemonade API."""
     try:
         response = subprocess.run(
-            ["curl", "-s", "http://localhost:8888/api/v1/stats"],
+            ["curl", "-s", "http://localhost:9001/api/v1/stats"],
             capture_output=True,
             text=True,
             timeout=5

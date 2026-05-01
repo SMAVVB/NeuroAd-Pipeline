@@ -1,6 +1,6 @@
 # NeuroAd Pipeline — MVP Plan
 
-**Stand:** 16. April 2026  
+**Stand:** 20. April 2026  
 **Hardware:** The Beast (AMD Ryzen AI MAX+ 395, Radeon 8060S iGPU, 96 GB Unified RAM, Ubuntu 24.04)  
 **Repo:** github.com/SMAVVB/NeuroAd-Pipeline  
 **Scope:** Pipeline A only — bestehende Werbung analysieren, keine Generierung
@@ -22,15 +22,17 @@
 | Brand Research Agent | ✅ | Komplett, erster erfolgreicher Run (yfood 17k Wörter STORM) |
 | Pipeline A | ✅ | Erster erfolgreicher End-to-End Run (apple_vs_samsung) |
 | Report Agent | ✅ | Alle 4 Module, JSON + Markdown Output |
-| Dashboard v2 | 🔨 | Draft in Lovable/v0.dev, React Frontend |
-| GitHub | 🔨 | .gitignore erstellt, Push ausstehend |
+| Dashboard v2 | ✅ | Läuft lokal (Next.js 16, Port 3001, alle 7 Seiten mit echten Daten) |
+| Lemonade Proxy | ✅ | Port 9002 → 8888, Token Tracking aktiv |
+| Multica Agent Timeout | ✅ | 8h (MULTICA_AGENT_TIMEOUT in .bashrc) |
+| GitHub | ✅ | Push abgeschlossen |
 
 ---
 
 ## Infrastruktur & Konfiguration
 
 ### Lemonade Modelle
-- MODEL_WORKHORSE: extra.gemma-4-31B-it-Q4_K_M.gguf (~10-11 TPS)
+- MODEL_WORKHORSE: extra.SuperGemma4-31b-abliterated.Q4_K_M.gguf (~10-11 TPS)
 - MODEL_JUDGE:     extra.DeepSeek-R1-Distill-Llama-70B-Q4_K_M.gguf
 - MODEL_FAST:      extra.moonshotai_Kimi-Linear-48B-A3B-Instruct-Q5_K_M.gguf
 - Claude Code:     extra.Qwen3-Coder-Next-Q4_K_M.gguf (~45-50 TPS)
@@ -97,6 +99,36 @@ Dashboard v2                ← React + Vite, Port 3002
 
 ---
 
+## Dashboard v2
+
+### Tech Stack
+- Next.js 16 (App Router)
+- React 19
+- TypeScript
+- Tailwind CSS v4
+- shadcn/ui components
+- Recharts (Charts), D3 v7 (Force Graph), Three.js (3D Brain)
+
+### Port Konfiguration
+- Frontend: Port 3000 (Next.js dev server)
+- Backend: Port 8080 (FastAPI)
+
+### Starten
+```bash
+bash ~/neuro_pipeline_project/start_dashboard.sh
+```
+
+### Verfügbare Seiten
+1. Overview — Creative Performance Table, Modul-Cards
+2. Brand Intelligence — Brand Profil, STORM Report, Märkte
+3. TRIBE Neural — 3D Brain, 6 Metrik-Balken, AI Analyse
+4. MiroFish Social — Animiertes Agent-Netzwerk (D3.js), Sentiment Gauge
+5. CLIP Brand — Radar Chart, Label Scores
+6. ViNet Attention — Heatmap, Product/Brand/CTA Attention
+7. Report & Ranking — Creative Ranking, Executive Summary, Export
+
+---
+
 ## Bekannte kritische Fixes & Patches
 
 ### TRIBE v2
@@ -157,6 +189,14 @@ nohup python3 brand_orchestrator.py "Brand" > run_$(date +%Y%m%d_%H%M%S).log 2>&
 
 ---
 
+## Multica Agent Environment
+
+- `ANTHROPIC_BASE_URL=http://localhost:9002` (via Multica UI → Agents → Environment Tab)
+- Damit laufen Claude Code Calls durch den Proxy → Token Tracking aktiv
+- Daemon-Start: `MULTICA_AGENT_TIMEOUT=8h multica daemon start` (in ~/.bashrc)
+
+---
+
 ## Dashboard v2 Seitenstruktur
 
 1. Overview — Creative Performance Table (Kernfeature), Modul-Cards
@@ -173,16 +213,17 @@ Design: Weiß/Schwarz, Inter + JetBrains Mono, Linear.app Aesthetic
 
 ## Offene Punkte
 
-### Sofort
-- [ ] Dashboard v2 Code aus Lovable in dashboard_v2/ übernehmen
-- [ ] Dashboard v2 echte Daten einlesen
-- [ ] GitHub Push (git add . → commit → push)
-- [ ] Lemonade Proxy testen und aktivieren
+### Erledigt
+- [x] Dashboard v2 Code aus Lovable/v0 → dashboard_v2/ übernommen
+- [x] Dashboard v2 echte Daten einlesen
+- [x] GitHub Push
+- [x] Lemonade Proxy testen und aktivieren
 
-### Kurzfristig
+### Sofort
 - [ ] ViNet ROIs definieren für apple_vs_samsung Assets
-- [ ] Pipeline A mit yfood Creatives testen
-- [ ] Brand Research Nachtrun vollständig
+- [ ] Pipeline A mit yfood Creatives testen (zweite Kampagne)
+- [ ] Brand Research Nachtrun für yfood
+- [ ] Dashboard Port 3001 in start_dashboard.sh als Standard
 
 ### Geplante Module-Upgrades (Post-MVP)
 | Aktuell | Ersatz | Grund |

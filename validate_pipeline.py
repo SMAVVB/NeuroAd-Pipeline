@@ -603,7 +603,7 @@ except Exception as e:
         
         if REQUESTS_AVAILABLE:
             try:
-                response = requests.get("http://localhost:8888/api/v1/models", timeout=5)
+                response = requests.get("http://localhost:9001/api/v1/models", timeout=5)
                 if response.status_code == 200:
                     models = response.json()
                     self.log(f"  API Response: {response.status_code}")
@@ -705,12 +705,12 @@ except Exception as e:
         self.log("8. LEMONADE + LLM")
         self.log("="*60)
         
-        # 8a. Check localhost:8888 models endpoint
+        # 8a. Check localhost:9001 models endpoint
         self.log("\n  8a. Checking Lemonade SDK models endpoint...")
         
         if REQUESTS_AVAILABLE:
             try:
-                response = requests.get("http://localhost:8888/api/v1/models", timeout=5)
+                response = requests.get("http://localhost:9001/api/v1/models", timeout=5)
                 if response.status_code == 200:
                     models = response.json()
                     self.record_result("Lemonade SDK (API)", "working", f"API responding: {response.status_code}")

@@ -26,8 +26,10 @@ def find_brand_youtube_channels(brand: str) -> list:
     for q in queries:
         urls = search_searxng(q)
         for url in urls:
-            if "youtube.com/@" in url or "youtube.com/channel/" in url or "youtube.com/user/" in url:
-                results.append(url)
+            # Handle both dict (from config_core) and string URLs
+            url_str = url.get("url", str(url)) if isinstance(url, dict) else str(url)
+            if "youtube.com/@" in url_str or "youtube.com/channel/" in url_str or "youtube.com/user/" in url_str:
+                results.append(url_str)
     return list(set(results))[:5]
 
 def get_channel_videos(channel_url: str, max_videos: int = 500) -> list:
@@ -154,14 +156,18 @@ def scrape_youtube_comprehensive(brand: str, brand_profile: dict = None) -> dict
             for q in year_queries:
                 urls = search_searxng(q)
                 for url in urls:
-                    if "youtube.com/watch" in url:
-                        all_video_urls.add(url)
+                    # Handle both dict (from config_core) and string URLs
+                    url_str = url.get("url", str(url)) if isinstance(url, dict) else str(url)
+                    if "youtube.com/watch" in url_str:
+                        all_video_urls.add(url_str)
 
     for q in search_queries:
         urls = search_searxng(q)
         for url in urls:
-            if "youtube.com/watch" in url:
-                all_video_urls.add(url)
+            # Handle both dict (from config_core) and string URLs
+            url_str = url.get("url", str(url)) if isinstance(url, dict) else str(url)
+            if "youtube.com/watch" in url_str:
+                all_video_urls.add(url_str)
 
     print(f"   → {len(all_video_urls)} Videos total gefunden")
     
@@ -404,7 +410,12 @@ def scrape_twitter_via_nitter(brand: str, brand_profile: dict = None) -> tuple:
     osint_urls = []
     for q in osint_queries:
         urls = search_searxng(q)
-        osint_urls.extend(urls)
+        # search_searxng returns list of dicts with "url" key
+        for u in urls:
+            if isinstance(u, dict):
+                osint_urls.append(u.get("url", ""))
+            else:
+                osint_urls.append(u)
     
     print(f"   → Twitter: {len(all_text)} Zeichen + {len(osint_urls)} OSINT-URLs")
     return all_text, osint_urls
@@ -474,8 +485,12 @@ def scrape_twitter_alternatives(brand: str, brand_profile: dict = None) -> tuple
     ]
     for q in thread_queries:
         urls = search_searxng(q)
-        all_urls.extend(urls)
-    
+        for u in urls:
+            if isinstance(u, dict):
+                all_urls.append(u.get("url", ""))
+            else:
+                all_urls.append(u)
+
     # 3. Social Searcher und ähnliche Monitoring-Tools
     social_search_queries = [
         f"site:socialsearcher.com {brand}",
@@ -488,10 +503,14 @@ def scrape_twitter_alternatives(brand: str, brand_profile: dict = None) -> tuple
         f'"{brand}" twitter kritik',
         f'"{brand}" twitter erfahrung',
     ]
-    
+
     for q in social_search_queries:
         urls = search_searxng(q)
-        all_urls.extend(urls)
+        for u in urls:
+            if isinstance(u, dict):
+                all_urls.append(u.get("url", ""))
+            else:
+                all_urls.append(u)
     
     # 4. Wayback Machine für alte Tweets (Twitter wurde archiviert!)
     try:
@@ -514,7 +533,7 @@ def scrape_twitter_alternatives(brand: str, brand_profile: dict = None) -> tuple
         pass
     
     print(f"   → Twitter: {len(all_text)} Zeichen direkt + {len(all_urls)} URLs zum Scrapen")
-    return all_text, list(set(all_urls))
+    return all_text, list(set([u.get("url", str(u)) if isinstance(u, dict) else str(u) for u in all_urls]))
 
 
 # ─── TIKTOK ──────────────────────────────────────────────────────────────────
@@ -538,8 +557,10 @@ def scrape_tiktok(brand: str) -> tuple:
     for q in queries:
         urls = search_searxng(q)
         for url in urls:
-            if "tiktok.com" in url:
-                tiktok_urls.add(url)
+            # Handle both dict (from config_core) and string URLs
+            url_str = url.get("url", str(url)) if isinstance(url, dict) else str(url)
+            if "tiktok.com" in url_str:
+                tiktok_urls.add(url_str)
     
     # Kommentare via yt-dlp
     for url in list(tiktok_urls)[:30]:
@@ -593,9 +614,11 @@ def scrape_tiktok_extended(brand: str) -> tuple:
     for q in tiktok_queries:
         urls = search_searxng(q)
         for url in urls:
-            if "tiktok.com" in url:
-                tiktok_urls.add(url)
-    
+            # Handle both dict (from config_core) and string URLs
+            url_str = url.get("url", str(url)) if isinstance(url, dict) else str(url)
+            if "tiktok.com" in url_str:
+                tiktok_urls.add(url_str)
+
     # 2. TikTok Mirror / Analyse-Seiten
     mirror_queries = [
         f"site:tiktokviral.io {brand}",
@@ -604,11 +627,16 @@ def scrape_tiktok_extended(brand: str) -> tuple:
         f"site:socialcounts.org tiktok {brand}",
         f"site:analisa.io {brand}",
     ]
-    
+
     mirror_urls = []
     for q in mirror_queries:
         urls = search_searxng(q)
-        mirror_urls.extend(urls)
+        # search_searxng returns list of dicts with "url" key
+        for u in urls:
+            if isinstance(u, dict):
+                mirror_urls.append(u.get("url", ""))
+            else:
+                mirror_urls.append(u)
     
     # 3. yt-dlp Kommentare für gefundene Videos
     for url in list(tiktok_urls)[:50]:
@@ -632,7 +660,7 @@ def scrape_tiktok_extended(brand: str) -> tuple:
     
     all_tiktok_urls = list(tiktok_urls) + mirror_urls
     print(f"   → TikTok: {len(tiktok_urls)} direkte Videos, {len(all_comments)} Zeichen Kommentare, {len(mirror_urls)} Mirror-URLs")
-    return all_comments, list(set(all_tiktok_urls))
+    return all_comments, list(set([u.get("url", str(u)) if isinstance(u, dict) else str(u) for u in all_tiktok_urls]))
 
 
 # ─── INSTAGRAM via öffentliche Alternativen ───────────────────────────────────
@@ -655,7 +683,12 @@ def scrape_instagram_osint(brand: str) -> list:
     
     for q in queries:
         urls = search_searxng(q)
-        ig_urls.extend(urls)
+        # search_searxng returns list of dicts with "url" key
+        for u in urls:
+            if isinstance(u, dict):
+                ig_urls.append(u.get("url", ""))
+            else:
+                ig_urls.append(u)
     
     # Picnob als öffentlicher Instagram-Mirror
     mirrors = ["https://www.picnob.com", "https://imginn.com"]
@@ -671,7 +704,7 @@ def scrape_instagram_osint(brand: str) -> list:
             pass
     
     print(f"   → Instagram: {len(ig_urls)} URLs gefunden")
-    return list(set(ig_urls))
+    return list(set([u.get("url", str(u)) if isinstance(u, dict) else str(u) for u in ig_urls]))
 
 
 def scrape_instagram_extended(brand: str) -> list:
@@ -701,7 +734,12 @@ def scrape_instagram_extended(brand: str) -> list:
     
     for q in queries:
         urls = search_searxng(q)
-        ig_urls.extend(urls)
+        # search_searxng returns list of dicts with "url" key
+        for u in urls:
+            if isinstance(u, dict):
+                ig_urls.append(u.get("url", ""))
+            else:
+                ig_urls.append(u)
     
     # 2. Öffentliche Mirror und Analyse-Seiten
     mirror_sites = [
@@ -735,8 +773,8 @@ def scrape_instagram_extended(brand: str) -> list:
         except:
             pass
     
-    print(f"   → Instagram: {len(set(ig_urls))} URLs gefunden")
-    return list(set(ig_urls))
+    print(f"   → Instagram: {len(set([u.get("url", str(u)) if isinstance(u, dict) else str(u) for u in ig_urls]))} URLs gefunden")
+    return list(set([u.get("url", str(u)) if isinstance(u, dict) else str(u) for u in ig_urls]))
 
 
 # ─── LINKEDIN ─────────────────────────────────────────────────────────────────
@@ -768,8 +806,15 @@ def scrape_linkedin_extended(brand: str) -> list:
     
     for q in queries:
         urls = search_searxng(q)
-        li_urls.extend(urls)
-    
+        # search_searxng returns list of dicts with "url" key
+        for u in urls:
+            if isinstance(u, dict):
+                li_urls.append(u.get("url", ""))
+            else:
+                li_urls.append(u)
+
+    # Filter empty strings and deduplicate
+    li_urls = [u for u in li_urls if u]
     print(f"   → LinkedIn+Reviews: {len(set(li_urls))} URLs gefunden")
     return list(set(li_urls))
 
@@ -803,8 +848,13 @@ def scrape_review_platforms(brand: str) -> list:
     
     for q in queries:
         urls = search_searxng(q)
-        review_urls.extend(urls)
-    
+        # search_searxng returns list of dicts with "url" key
+        for u in urls:
+            if isinstance(u, dict):
+                review_urls.append(u.get("url", ""))
+            else:
+                review_urls.append(u)
+
     print(f"   → Reviews: {len(set(review_urls))} URLs gefunden")
     return list(set(review_urls))
 
@@ -852,8 +902,13 @@ def scrape_news_media(brand: str, brand_profile: dict = None) -> list:
     
     for q in base_queries + media_queries:
         urls = search_searxng(q)
-        news_urls.extend(urls)
-    
+        # search_searxng returns list of dicts with "url" key
+        for u in urls:
+            if isinstance(u, dict):
+                news_urls.append(u.get("url", ""))
+            else:
+                news_urls.append(u)
+
     print(f"   → News: {len(set(news_urls))} URLs gefunden")
     return list(set(news_urls))
 

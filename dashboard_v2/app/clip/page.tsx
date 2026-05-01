@@ -129,10 +129,32 @@ function CLIPContent() {
     )
   }
 
+  // Use labels (from all_scores) for Radar Chart if available, otherwise fall back to visualDimensions
+  const hasLabels = selectedCreative.clip.labels && selectedCreative.clip.labels.length > 0
+  const hasVisualDimensions = selectedCreative.clip.visual_dimensions &&
+    Object.keys(selectedCreative.clip.visual_dimensions).length > 0 &&
+    Object.values(selectedCreative.clip.visual_dimensions).some(v => v > 0)
+
+  // Use labels data for Radar Chart (all_scores contains the actual label scores)
+  const chartDimensions = hasLabels
+    ? Object.fromEntries(selectedCreative.clip.labels.map(l => [l.name, l.score]))
+    : hasVisualDimensions
+      ? selectedCreative.clip.visual_dimensions
+      : {
+          color_consistency: selectedCreative.clip.brand_match_score,
+          typography_match: selectedCreative.clip.brand_match_score,
+          imagery_style: selectedCreative.clip.brand_match_score,
+          tone_alignment: selectedCreative.clip.brand_match_score,
+          logo_visibility: selectedCreative.clip.brand_match_score,
+        }
+
+  // Get top label from clip.top_label or clip.labels[0]
+  const topLabel = selectedCreative.clip.top_label || (selectedCreative.clip.labels && selectedCreative.clip.labels[0]?.name) || 'unknown'
+
   return (
     <>
-      <PageHeader 
-        title="Brand Consistency Analysis" 
+      <PageHeader
+        title="Brand Consistency Analysis"
         description="Measuring visual alignment between your creative and established brand guidelines"
       />
 
@@ -153,13 +175,13 @@ function CLIPContent() {
           <CardTitle className="text-base">Brand Match Score</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col items-center py-8">
-          <LargeScoreDisplay 
-            score={selectedCreative.clip.brand_match_score} 
+          <LargeScoreDisplay
+            score={selectedCreative.clip.brand_match_score}
             grade={selectedCreative.clip.grade}
             label="Brand Consistency"
           />
           <Badge variant="secondary" className="mt-4">
-            Top Label: {selectedCreative.clip.top_label}
+            Top Label: {topLabel}
           </Badge>
         </CardContent>
       </Card>
@@ -168,10 +190,10 @@ function CLIPContent() {
         {/* Radar Chart */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Visual Dimensions</CardTitle>
+            <CardTitle className="text-base">Score Dimensions</CardTitle>
           </CardHeader>
           <CardContent>
-            <RadarChart dimensions={selectedCreative.clip.visual_dimensions} />
+            <RadarChart dimensions={chartDimensions} />
           </CardContent>
         </Card>
 
@@ -181,15 +203,19 @@ function CLIPContent() {
             <CardTitle className="text-base">Label Breakdown</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {selectedCreative.clip.labels.map((label) => (
-              <MetricBar
-                key={label.name}
-                label={label.name}
-                value={label.score}
-                showPercentage
-                colorClass={label.score >= 0.8 ? 'bg-emerald-500' : label.score >= 0.6 ? 'bg-indigo' : 'bg-amber-500'}
-              />
-            ))}
+            {selectedCreative.clip.labels && selectedCreative.clip.labels.length > 0 ? (
+              selectedCreative.clip.labels.map((label) => (
+                <MetricBar
+                  key={label.name}
+                  label={label.name}
+                  value={label.score}
+                  showPercentage
+                  colorClass={label.score >= 0.8 ? 'bg-emerald-500' : label.score >= 0.6 ? 'bg-indigo' : 'bg-amber-500'}
+                />
+              ))
+            ) : (
+              <div className="text-sm text-muted-foreground italic">No label breakdown available</div>
+            )}
           </CardContent>
         </Card>
       </div>

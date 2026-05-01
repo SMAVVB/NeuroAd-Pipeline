@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Inter, JetBrains_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
+import { DashboardProvider } from '@/lib/dashboard-context'
 import './globals.css'
 
 const inter = Inter({ 
@@ -25,9 +26,11 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`}>
+    <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable} dark`}>
       <body className="font-sans antialiased bg-background">
-        {children}
+        <DashboardProvider>
+          {children}
+        </DashboardProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>

@@ -2,63 +2,70 @@
 
 import { useRef, useEffect, useState } from 'react'
 import * as THREE from 'three'
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
+
+// OrbitControls type - imported dynamically at runtime
+type OrbitControls = any
 
 // ROI mapping based on neuroscientific knowledge
-// Mapping: neural_engagement→prefrontal, emotional_impact→TPJ, face_response→FFA, scene_response→PPA, motion_response→MT, language_engagement→Broca
+// Mapping per issue requirements:
+// neural_engagement→prefrontal, emotional_impact→limbic, face_response→temporal,
+// scene_response→occipital, motion_response→MT, language_engagement→frontal/broca
 const ROI_CONFIG = {
   prefrontal: {
     name: 'Prefrontal Cortex',
     color: '#3b82f6', // blue
-    position: { x: 0, y: 0.6, z: 0.2 },
-    scale: { x: 0.35, y: 0.25, z: 0.3 },
+    position: { x: 0, y: 0.15, z: -0.4 },
+    scale: { x: 0.3, y: 0.25, z: 0.25 },
     label: 'Neural Engagement',
   },
-  tpj: {
-    name: 'TPJ',
+  limbic: {
+    name: 'Limbic System',
     color: '#3b82f6', // blue
-    position: { x: 0.35, y: 0.1, z: 0.2 },
-    scale: { x: 0.2, y: 0.2, z: 0.2 },
+    position: { x: 0, y: -0.1, z: 0.0 },
+    scale: { x: 0.25, y: 0.2, z: 0.2 },
     label: 'Emotional Impact',
   },
-  ffa: {
-    name: 'FFA',
+  temporal: {
+    name: 'Temporal Lobe',
     color: '#3b82f6', // blue
-    position: { x: 0.35, y: -0.1, z: 0.5 },
-    scale: { x: 0.2, y: 0.2, z: 0.2 },
+    position: { x: 0.45, y: -0.05, z: 0.0 },
+    scale: { x: 0.25, y: 0.2, z: 0.25 },
     label: 'Face Response',
   },
-  ppa: {
-    name: 'PPA',
+  occipital: {
+    name: 'Occipital Lobe',
     color: '#3b82f6', // blue
-    position: { x: -0.35, y: -0.1, z: 0.5 },
-    scale: { x: 0.2, y: 0.2, z: 0.2 },
+    position: { x: 0, y: -0.1, z: 0.55 },
+    scale: { x: 0.25, y: 0.2, z: 0.25 },
     label: 'Scene Response',
   },
   mt: {
-    name: 'MT',
+    name: 'MT Area',
     color: '#3b82f6', // blue
-    position: { x: -0.3, y: -0.3, z: 0.4 },
+    position: { x: 0.3, y: -0.15, z: 0.35 },
     scale: { x: 0.2, y: 0.2, z: 0.2 },
     label: 'Motion Response',
   },
-  broca: {
-    name: 'Broca Area',
+  frontal: {
+    name: 'Frontal Lobe / Broca',
     color: '#3b82f6', // blue
-    position: { x: 0, y: -0.1, z: 0.8 },
+    position: { x: -0.25, y: 0.1, z: -0.2 },
     scale: { x: 0.25, y: 0.15, z: 0.2 },
     label: 'Language Engagement',
   },
 }
 
 // ROI mapping from tribe scores to brain regions
-export const TRIBE_ROI_MAPPING: Record<string, keyof typeof ROI_CONFIG> = {
+const ROI_NAMES = ['prefrontal', 'limbic', 'temporal', 'occipital', 'mt', 'frontal'] as const
+type ROIName = typeof ROI_NAMES[number]
+
+export const TRIBE_ROI_MAPPING: Record<string, ROIName> = {
   neural_engagement: 'prefrontal',
-  emotional_impact: 'tpj',
-  face_response: 'ffa',
-  scene_response: 'ppa',
+  emotional_impact: 'limbic',
+  face_response: 'temporal',
+  scene_response: 'occipital',
   motion_response: 'mt',
-  language_engagement: 'broca',
+  language_engagement: 'frontal',
 }
 
 function getScoreColor(score: number): string {
@@ -83,11 +90,18 @@ interface BrainViewerProps {
 export function BrainViewer({ tribeScores, size = 'md' }: BrainViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const sceneRef = useRef<THREE.Scene | null>(null)
-  const brainMeshRef = useRef<THREE.Mesh | null>(null)
+  const brainGroupRef = useRef<THREE.Group | null>(null)
   const roiSpheresRef = useRef<THREE.Mesh[]>([])
-  const controlsRef = useRef<OrbitControls | null>(null)
-  const animationRef = useRef<number>()
+  const controlsRef = useRef<any | null>(null)
+  const animationRef = useRef<number | undefined>(undefined)
   const isDraggingRef = useRef(false)
+  // Ref to track current scores for the animation loop
+  const tribeScoresRef = useRef(tribeScores)
+
+  // Update scores ref when tribeScores changes
+  useEffect(() => {
+    tribeScoresRef.current = tribeScores
+  }, [tribeScores])
 
   // Create stylized brain using geometries
   useEffect(() => {
@@ -99,18 +113,18 @@ export function BrainViewer({ tribeScores, size = 'md' }: BrainViewerProps) {
 
     // Scene setup
     const scene = new THREE.Scene()
-    scene.background = new THREE.Color(0x0a0a0a)
+    scene.background = new THREE.Color(0x1a1a1a) // dark grey instead of black
     sceneRef.current = scene
 
-    // Camera
+    // Camera - slightly from top
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100)
-    camera.position.set(0, 0, 3.5)
+    camera.position.set(0, 0.5, 3.0)
 
     // Renderer
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
     renderer.setSize(width, height)
     renderer.setPixelRatio(window.devicePixelRatio)
-    renderer.setClearColor(0x0a0a0a, 0)
+    renderer.setClearColor(0x1a1a1a, 0) // dark grey instead of black
     container.appendChild(renderer.domElement)
 
     // Lighting
@@ -125,50 +139,57 @@ export function BrainViewer({ tribeScores, size = 'md' }: BrainViewerProps) {
     backLight.position.set(-5, -5, -5)
     scene.add(backLight)
 
-    // Create stylized brain from multiple spheres (no external mesh needed)
+    // Create stylized brain from multiple geometries
     const brainGroup = new THREE.Group()
     scene.add(brainGroup)
 
-    // Main brain shape - two hemispheres
-    const hemisphereGeo = new THREE.SphereGeometry(0.6, 32, 32)
-
-    // Left hemisphere
-    const leftHemisphere = new THREE.Mesh(hemisphereGeo, new THREE.MeshStandardMaterial({
-      color: 0xffffff,
-      roughness: 0.4,
-      metalness: 0.1,
-    }))
-    leftHemisphere.position.x = -0.35
+    // Main brain shape - two hemispheres with realistic proportions
+    // Left hemisphere (abgeflachter Ellipsoid: ScaleY 0.75, ScaleZ 1.2)
+    const leftHemisphere = new THREE.Mesh(
+      new THREE.SphereGeometry(0.6, 32, 32),
+      new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        roughness: 0.4,
+        metalness: 0.1,
+      })
+    )
+    leftHemisphere.position.set(-0.32, 0, 0) // slight gap in the middle
+    leftHemisphere.scale.set(1, 0.75, 1.2)
     brainGroup.add(leftHemisphere)
 
-    // Right hemisphere
-    const rightHemisphere = new THREE.Mesh(hemisphereGeo, new THREE.MeshStandardMaterial({
-      color: 0xffffff,
-      roughness: 0.4,
-      metalness: 0.1,
-    }))
-    rightHemisphere.position.x = 0.35
+    // Right hemisphere (abgeflachter Ellipsoid: ScaleY 0.75, ScaleZ 1.2)
+    const rightHemisphere = new THREE.Mesh(
+      new THREE.SphereGeometry(0.6, 32, 32),
+      new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        roughness: 0.4,
+        metalness: 0.1,
+      })
+    )
+    rightHemisphere.position.set(0.32, 0, 0) // slight gap in the middle
+    rightHemisphere.scale.set(1, 0.75, 1.2)
     brainGroup.add(rightHemisphere)
 
-    // Frontal lobe connector
-    const frontalConnector = new THREE.Mesh(
-      new THREE.SphereGeometry(0.25, 32, 32),
-      new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4, metalness: 0.1 })
+    // Cerebellum (Kleinhirn) - small sphere at back-bottom
+    const cerebellum = new THREE.Mesh(
+      new THREE.SphereGeometry(0.4, 32, 32),
+      new THREE.MeshStandardMaterial({ color: 0xf0f0f0, roughness: 0.4, metalness: 0.1 })
     )
-    frontalConnector.position.set(0, 0.2, 0.4)
-    brainGroup.add(frontalConnector)
+    cerebellum.position.set(0, -0.2, 0.7)
+    brainGroup.add(cerebellum)
 
-    // Occipital lobe (back)
-    const occipitalLobe = new THREE.Mesh(
-      new THREE.SphereGeometry(0.3, 32, 32),
-      new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4, metalness: 0.1 })
+    // Brain Stem - narrow cylinder at bottom
+    const brainStem = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.1, 0.15, 0.4, 16),
+      new THREE.MeshStandardMaterial({ color: 0xe0e0e0, roughness: 0.4, metalness: 0.1 })
     )
-    occipitalLobe.position.set(0, -0.1, 0.75)
-    brainGroup.add(occipitalLobe)
+    brainStem.position.set(0, -0.5, 0.6)
+    brainStem.rotation.x = Math.PI / 2 // align with Z axis
+    brainGroup.add(brainStem)
 
-    brainMeshRef.current = brainGroup
+    brainGroupRef.current = brainGroup
 
-    // Create ROI spheres
+    // Create ROI spheres (half-transparent for brain shape visibility)
     Object.entries(ROI_CONFIG).forEach(([key, config]) => {
       const sphere = new THREE.Mesh(
         new THREE.SphereGeometry(0.12, 32, 32),
@@ -178,6 +199,8 @@ export function BrainViewer({ tribeScores, size = 'md' }: BrainViewerProps) {
           emissiveIntensity: 0.3,
           roughness: 0.2,
           metalness: 0.5,
+          transparent: true,
+          opacity: 0.85, // half-transparent
         })
       )
       sphere.position.set(
@@ -195,13 +218,18 @@ export function BrainViewer({ tribeScores, size = 'md' }: BrainViewerProps) {
       roiSpheresRef.current.push(sphere)
     })
 
-    // OrbitControls
-    const controls = new OrbitControls(camera, renderer.domElement)
-    controls.enableDamping = true
-    controls.dampingFactor = 0.05
-    controls.minDistance = 2
-    controls.maxDistance = 6
-    controlsRef.current = controls
+    // Dynamic import of OrbitControls
+    const loadAndInitControls = async () => {
+      const OrbitControls = (await import('three/examples/jsm/controls/OrbitControls' as any)).OrbitControls as any
+      const controls = new OrbitControls(camera, renderer.domElement)
+      controls.enableDamping = true
+      controls.dampingFactor = 0.05
+      controls.minDistance = 2
+      controls.maxDistance = 6
+      controlsRef.current = controls
+    }
+
+    loadAndInitControls()
 
     // Handle rotation
     let rotationSpeed = 0.002
@@ -215,7 +243,22 @@ export function BrainViewer({ tribeScores, size = 'md' }: BrainViewerProps) {
         brainGroup.rotation.y = targetRotationY
       }
 
-      controls.update()
+      // Update ROI colors dynamically based on current scores
+      if (roiSpheresRef.current.length > 0) {
+        roiSpheresRef.current.forEach(sphere => {
+          const roiKey = sphere.userData.roiKey as string
+          const scoreKey = roiKey as keyof typeof tribeScores
+          const score = tribeScoresRef.current[scoreKey] ?? 0
+          const color = getScoreColor(score)
+
+          const material = sphere.material as THREE.MeshStandardMaterial
+          material.color.set(color)
+          material.emissive.set(color)
+          material.emissiveIntensity = score > 0.18 ? 0.3 : 0.15
+        })
+      }
+
+      controlsRef.current?.update(null)
       renderer.render(scene, camera)
     }
 
@@ -252,24 +295,9 @@ export function BrainViewer({ tribeScores, size = 'md' }: BrainViewerProps) {
       renderer.domElement.removeEventListener('touchend', handleDragEnd)
       renderer.domElement.removeEventListener('mouseleave', handleDragEnd)
       container.removeChild(renderer.domElement)
-      scene.dispose()
       renderer.dispose()
     }
   }, [])
-
-  // Update ROI colors based on scores
-  useEffect(() => {
-    roiSpheresRef.current.forEach(sphere => {
-      const roiKey = sphere.userData.roiKey as keyof typeof TRIBE_ROI_MAPPING
-      const scoreKey = TRIBE_ROI_MAPPING[roiKey]
-      const score = tribeScores[scoreKey] ?? 0
-      const color = getScoreColor(score)
-
-      sphere.material.color.set(color)
-      sphere.material.emissive.set(color)
-      sphere.material.emissiveIntensity = score > 0.18 ? 0.3 : 0.15
-    })
-  }, [tribeScores])
 
   return (
     <div
