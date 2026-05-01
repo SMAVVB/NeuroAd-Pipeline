@@ -479,14 +479,25 @@ def run_mirofish(assets: list[Path], config: dict, campaign_dir: Path,
         # Return the actual API response data
         return result
 
-    except Exception as e:
-        logger.error(f"  [MIROFISH] Simulation failed: {e}")
-        # Return neutral scores on failure
+    except RuntimeError as e:
+        logger.warning(f"  [MIROFISH] Simulation failed (0 entities or runtime error): {e}")
         return {
             "positive_sentiment": 0.5,
             "negative_sentiment": 0.5,
             "virality_score":     0.5,
             "controversy_risk":   0.5,
+            "social_score":       0.5,
+            "source":             "fallback",
+            "note":               f"Simulation failed: {str(e)}",
+        }
+    except Exception as e:
+        logger.error(f"  [MIROFISH] Simulation failed: {e}")
+        return {
+            "positive_sentiment": 0.5,
+            "negative_sentiment": 0.5,
+            "virality_score":     0.5,
+            "controversy_risk":   0.5,
+            "social_score":       0.5,
             "source":             "error",
             "note":               f"Simulation failed: {str(e)}",
         }
