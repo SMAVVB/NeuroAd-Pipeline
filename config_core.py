@@ -45,11 +45,13 @@ def ask_llm(system_prompt: str, user_prompt: str, model_name: str, temperature: 
         "max_tokens": 4096
     }
 
-    # AUTO-RETRY LOOP
+    # DEFAULT timeout: 180 seconds (3 minutes)
+    default_timeout = 180
+
+    # AUTO-RETRY LOOP with exponential backoff
     for attempt in range(max_retries):
         try:
-            # Nutze timeout_override wenn gesetzt, sonst Standard-Timeout von 1200 Sekunden (20 Minuten)
-            timeout = timeout_override if timeout_override is not None else 1200
+            timeout = timeout_override if timeout_override is not None else default_timeout
             res = requests.post(LLM_URL, json=payload, timeout=timeout)
             res.raise_for_status()
             data = res.json()
@@ -86,12 +88,16 @@ def ask_llm(system_prompt: str, user_prompt: str, model_name: str, temperature: 
 
             return content
 
-        except Exception as e:
+        except requests.exceptions.RequestException as e:
             print(f"\n❌ NETZWERK-FEHLER (Versuch {attempt+1}/{max_retries}): {e}")
-            time.sleep(5)
+            if attempt < max_retries - 1:
+                backoff = 5 * (2 ** attempt)  # 5, 10, 20 seconds
+                print(f"   Warte {backoff}s vor Wiederholungsversuch...")
+                time.sleep(backoff)
 
+    # All retries exhausted — return safe fallback instead of crashing
     print("🚨 FEHLER: Alle Retries fehlgeschlagen. Breche LLM-Anfrage ab.")
-    return ""
+    return "LLM API Error: Timeout or Unreachable"
 
 def search_searxng(query: str, category: str = "general") -> list:
     print(f"   🔍 Suche: {query}")
