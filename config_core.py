@@ -6,8 +6,8 @@ from datetime import datetime
 from pathlib import Path
 
 # --- KONFIGURATION ---
-# LLM_URL: Proxy für Token Tracking (Port 9002) → Lemonade (Port 8888)
-LLM_URL = "http://127.0.0.1:9002/v1/chat/completions"
+# Ollama proxy URL (Port 9002) → Lemonade (Port 8888)
+OLLAMA_URL = "http://127.0.0.1:9002/v1/chat/completions"
 SEARXNG_URL = "http://127.0.0.1:8889/search"
 RAW_DATA_DIR = "raw_data" 
 
@@ -52,7 +52,7 @@ def ask_llm(system_prompt: str, user_prompt: str, model_name: str, temperature: 
     for attempt in range(max_retries):
         try:
             timeout = timeout_override if timeout_override is not None else default_timeout
-            res = requests.post(LLM_URL, json=payload, timeout=timeout)
+            res = requests.post(OLLAMA_URL, json=payload, timeout=timeout)
             res.raise_for_status()
             data = res.json()
 

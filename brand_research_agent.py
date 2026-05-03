@@ -11,7 +11,7 @@ from crawl4ai import AsyncWebCrawler
 from brand_graph_manager import BrandGraphManager, URI, AUTH
 
 # --- 1. KONFIGURATION ---
-LLM_URL = "http://172.17.0.1:8888/v1/chat/completions" # Deine Lemonade IP
+OLLAMA_URL = "http://172.17.0.1:8888/v1/chat/completions" # Deine Lemonade IP
 SEARXNG_URL = "http://127.0.0.1:8889/search"
 RAW_DATA_DIR = "raw_data" 
 
@@ -32,7 +32,7 @@ def ask_llm(system_prompt: str, user_prompt: str, model_name: str, temperature: 
         "temperature": temperature
     }
     # Timeout auf 900s erhöht für maximale Skalierung
-    response = requests.post(LLM_URL, json=payload, timeout=900)
+    response = requests.post(OLLAMA_URL, json=payload, timeout=900)
     response.raise_for_status()
     return response.json().get("choices", [{}])[0].get("message", {}).get("content", "")
 
