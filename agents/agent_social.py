@@ -24,10 +24,13 @@ def find_brand_youtube_channels(brand: str) -> list:
         f"site:youtube.com/channel {brand} official",
     ]
     for q in queries:
-        urls = search_searxng(q)
+        urls = search_searxng(q) or []
+        if not urls:
+            print(f"      → Keine YouTube-Ergebnisse für '{q}'")
         for url in urls:
             if "youtube.com/@" in url or "youtube.com/channel/" in url or "youtube.com/user/" in url:
                 results.append(url)
+        time.sleep(2)
     return list(set(results))[:5]
 
 def get_channel_videos(channel_url: str, max_videos: int = 500) -> list:
@@ -152,16 +155,22 @@ def scrape_youtube_comprehensive(brand: str, brand_profile: dict = None) -> dict
         for year in range(founding, current_year + 1):
             year_queries = [f"{brand} {year}", f"{brand} review {year}"]
             for q in year_queries:
-                urls = search_searxng(q)
+                urls = search_searxng(q) or []
+                if not urls:
+                    print(f"      → Keine YouTube-Ergebnisse für '{q}' (Jahr {year})")
                 for url in urls:
                     if "youtube.com/watch" in url:
                         all_video_urls.add(url)
+                time.sleep(2)
 
     for q in search_queries:
-        urls = search_searxng(q)
+        urls = search_searxng(q) or []
+        if not urls:
+            print(f"      → Keine YouTube-Ergebnisse für '{q}'")
         for url in urls:
             if "youtube.com/watch" in url:
                 all_video_urls.add(url)
+        time.sleep(2)
 
     print(f"   → {len(all_video_urls)} Videos total gefunden")
     
@@ -403,9 +412,12 @@ def scrape_twitter_via_nitter(brand: str, brand_profile: dict = None) -> tuple:
     
     osint_urls = []
     for q in osint_queries:
-        urls = search_searxng(q)
+        urls = search_searxng(q) or []
+        if not urls:
+            print(f"      → Keine Twitter-OSINT-Ergebnisse für '{q}'")
         osint_urls.extend(urls)
-    
+        time.sleep(2)
+
     print(f"   → Twitter: {len(all_text)} Zeichen + {len(osint_urls)} OSINT-URLs")
     return all_text, osint_urls
 
@@ -473,9 +485,12 @@ def scrape_twitter_alternatives(brand: str, brand_profile: dict = None) -> tuple
         f"site:threadreaderapp.com #{brand_handle}",
     ]
     for q in thread_queries:
-        urls = search_searxng(q)
+        urls = search_searxng(q) or []
+        if not urls:
+            print(f"      → Keine Threadreaderapp-Ergebnisse für '{q}'")
         all_urls.extend(urls)
-    
+        time.sleep(2)
+
     # 3. Social Searcher und ähnliche Monitoring-Tools
     social_search_queries = [
         f"site:socialsearcher.com {brand}",
@@ -488,10 +503,13 @@ def scrape_twitter_alternatives(brand: str, brand_profile: dict = None) -> tuple
         f'"{brand}" twitter kritik',
         f'"{brand}" twitter erfahrung',
     ]
-    
+
     for q in social_search_queries:
-        urls = search_searxng(q)
+        urls = search_searxng(q) or []
+        if not urls:
+            print(f"      → Keine Social-Searcher-Ergebnisse für '{q}'")
         all_urls.extend(urls)
+        time.sleep(2)
     
     # 4. Wayback Machine für alte Tweets (Twitter wurde archiviert!)
     try:
@@ -536,10 +554,13 @@ def scrape_tiktok(brand: str) -> tuple:
     ]
     
     for q in queries:
-        urls = search_searxng(q)
+        urls = search_searxng(q) or []
+        if not urls:
+            print(f"      → Keine TikTok-Ergebnisse für '{q}'")
         for url in urls:
             if "tiktok.com" in url:
                 tiktok_urls.add(url)
+        time.sleep(2)
     
     # Kommentare via yt-dlp
     for url in list(tiktok_urls)[:30]:
@@ -591,11 +612,14 @@ def scrape_tiktok_extended(brand: str) -> tuple:
     ]
     
     for q in tiktok_queries:
-        urls = search_searxng(q)
+        urls = search_searxng(q) or []
+        if not urls:
+            print(f"      → Keine TikTok-Ergebnisse für '{q}'")
         for url in urls:
             if "tiktok.com" in url:
                 tiktok_urls.add(url)
-    
+        time.sleep(2)
+
     # 2. TikTok Mirror / Analyse-Seiten
     mirror_queries = [
         f"site:tiktokviral.io {brand}",
@@ -604,11 +628,14 @@ def scrape_tiktok_extended(brand: str) -> tuple:
         f"site:socialcounts.org tiktok {brand}",
         f"site:analisa.io {brand}",
     ]
-    
+
     mirror_urls = []
     for q in mirror_queries:
-        urls = search_searxng(q)
+        urls = search_searxng(q) or []
+        if not urls:
+            print(f"      → Keine Mirror-Ergebnisse für '{q}'")
         mirror_urls.extend(urls)
+        time.sleep(2)
     
     # 3. yt-dlp Kommentare für gefundene Videos
     for url in list(tiktok_urls)[:50]:
@@ -652,10 +679,13 @@ def scrape_instagram_osint(brand: str) -> list:
         f"site:picnob.com {brand}",
         f"site:imginn.com {brand}",
     ]
-    
+
     for q in queries:
-        urls = search_searxng(q)
+        urls = search_searxng(q) or []
+        if not urls:
+            print(f"      → Keine Instagram-Ergebnisse für '{q}'")
         ig_urls.extend(urls)
+        time.sleep(2)
     
     # Picnob als öffentlicher Instagram-Mirror
     mirrors = ["https://www.picnob.com", "https://imginn.com"]
@@ -700,9 +730,12 @@ def scrape_instagram_extended(brand: str) -> list:
     ]
     
     for q in queries:
-        urls = search_searxng(q)
+        urls = search_searxng(q) or []
+        if not urls:
+            print(f"      → Keine Instagram-Ergebnisse für '{q}'")
         ig_urls.extend(urls)
-    
+        time.sleep(2)
+
     # 2. Öffentliche Mirror und Analyse-Seiten
     mirror_sites = [
         f"https://www.picnob.com/{brand_handle}/",
@@ -710,7 +743,7 @@ def scrape_instagram_extended(brand: str) -> list:
         f"https://www.instagrammernews.com/search/{brand}",
         f"https://www.instagram-analyzer.com/{brand_handle}",
     ]
-    
+
     mirror_queries = [
         f"site:picnob.com {brand}",
         f"site:imginn.com {brand}",
@@ -721,10 +754,13 @@ def scrape_instagram_extended(brand: str) -> list:
         f"site:analisa.io instagram {brand}",
         f"site:socialblade.com instagram {brand_handle}",
     ]
-    
+
     for q in mirror_queries:
-        urls = search_searxng(q)
+        urls = search_searxng(q) or []
+        if not urls:
+            print(f"      → Keine Mirror-Ergebnisse für '{q}'")
         ig_urls.extend(urls)
+        time.sleep(2)
     
     for mirror_url in mirror_sites:
         try:
@@ -767,8 +803,11 @@ def scrape_linkedin_extended(brand: str) -> list:
     ]
     
     for q in queries:
-        urls = search_searxng(q)
+        urls = search_searxng(q) or []
+        if not urls:
+            print(f"      → Keine LinkedIn-Ergebnisse für '{q}'")
         li_urls.extend(urls)
+        time.sleep(2)
     
     print(f"   → LinkedIn+Reviews: {len(set(li_urls))} URLs gefunden")
     return list(set(li_urls))
@@ -802,8 +841,11 @@ def scrape_review_platforms(brand: str) -> list:
     ]
     
     for q in queries:
-        urls = search_searxng(q)
+        urls = search_searxng(q) or []
+        if not urls:
+            print(f"      → Keine Review-Ergebnisse für '{q}'")
         review_urls.extend(urls)
+        time.sleep(2)
     
     print(f"   → Reviews: {len(set(review_urls))} URLs gefunden")
     return list(set(review_urls))
@@ -851,8 +893,11 @@ def scrape_news_media(brand: str, brand_profile: dict = None) -> list:
     ]
     
     for q in base_queries + media_queries:
-        urls = search_searxng(q)
+        urls = search_searxng(q) or []
+        if not urls:
+            print(f"      → Keine News-Ergebnisse für '{q}'")
         news_urls.extend(urls)
+        time.sleep(2)
     
     print(f"   → News: {len(set(news_urls))} URLs gefunden")
     return list(set(news_urls))
