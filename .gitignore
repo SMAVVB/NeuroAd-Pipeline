@@ -107,3 +107,4 @@ tools/tribev2/
 
 # Lemonade token log
 ~/.lemonade_token_log.jsonl
+.watchdog_loop_guard.json
