@@ -11,6 +11,15 @@ import re
 import sys
 
 GUARD_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".watchdog_loop_guard.json")
+STATUS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "watchdog_status.json")
+
+# Current watchdog lifecycle state
+_watchdog_status = {
+    "last_crash_time": None,
+    "total_crashes_handled": 0,
+    "current_status": "Monitoring",
+    "last_error_summary": None,
+}
 
 
 def extract_location(raw_trace: str) -> str:
@@ -69,6 +78,63 @@ def save_guard_state(state: dict):
         json.dump(state, f, indent=2)
 
 
+def set_status(status: str):
+    """Set the current watchdog lifecycle status.
+
+    Args:
+        status: One of 'Monitoring', 'Cooling Down',
+            'Waiting for Agent', 'Fatal Error'.
+    """
+    _watchdog_status["current_status"] = status
+    _write_status()
+
+
+def record_crash(error_summary: str):
+    """Record a crash event and update the watchdog status.
+
+    Args:
+        error_summary: The summarized error message from the crash.
+    """
+    from datetime import datetime
+
+    _watchdog_status["total_crashes_handled"] += 1
+    _watchdog_status["last_crash_time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    _watchdog_status["last_error_summary"] = error_summary
+    _watchdog_status["current_status"] = "Waiting for Agent"
+    _write_status()
+
+
+def _write_status():
+    """Write the current watchdog status to disk synchronously."""
+    with open(STATUS_FILE, "w") as f:
+        json.dump(_watchdog_status, f, indent=2)
+
+
+def get_watchdog_status() -> dict:
+    """Return the current watchdog status dict (copy).
+
+    Returns:
+        A copy of the internal status dictionary.
+    """
+    return dict(_watchdog_status)
+
+
+def load_watchdog_status() -> dict:
+    """Load the watchdog status from disk.
+
+    Returns:
+        The status dict from the JSON file, or the in-memory default
+        if the file does not exist.
+    """
+    if os.path.exists(STATUS_FILE):
+        try:
+            with open(STATUS_FILE, "r") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, IOError):
+            pass
+    return dict(_watchdog_status)
+
+
 def create_multica_ticket(error_summary: str, raw_trace: str) -> dict:
     """Create a Multica ticket for the given error, with infinite-loop detection.
 
@@ -107,6 +173,7 @@ def create_multica_ticket(error_summary: str, raw_trace: str) -> dict:
     # treat it as an infinite loop.
     infinite_loop_threshold = 5
     if guard[hash_value]["count"] >= infinite_loop_threshold:
+        set_status("Fatal Error")
         raise RuntimeError(
             f"Infinite Loop Detected: '{error_summary}' at {extract_location(raw_trace)} "
             f"has occurred {guard[hash_value]['count']} times. "
@@ -114,9 +181,11 @@ def create_multica_ticket(error_summary: str, raw_trace: str) -> dict:
         )
 
     if guard[hash_value]["count"] > 1:
+        set_status("Monitoring")
         return {"action": "duplicate", "hash": hash_value}
 
     # For first occurrence, create a new ticket (placeholder).
+    record_crash(error_summary)
     return {"action": "created", "hash": hash_value}
 
 
