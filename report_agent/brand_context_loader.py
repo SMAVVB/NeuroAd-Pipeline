@@ -8,9 +8,12 @@ Loads brand context from:
 """
 
 import json
+import logging
 import re
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
+
+logger = logging.getLogger(__name__)
 
 
 class BrandContextLoader:
@@ -87,6 +90,8 @@ class BrandContextLoader:
                                 # Check if brand matches
                                 if profile.get("brand", "").lower() == brand_name.lower():
                                     return profile
+                        except json.JSONDecodeError:
+                            logger.warning("Corrupt brand_profile.json skipped: %s", profile_path)
                         except Exception:
                             continue
         
@@ -133,6 +138,9 @@ class BrandContextLoader:
             try:
                 with open(profile_path, 'r', encoding='utf-8') as f:
                     return json.load(f)
+            except json.JSONDecodeError:
+                logger.warning("Corrupt brand_profile.json skipped: %s", profile_path)
+                return {}
             except Exception:
                 pass
         return None
