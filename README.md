@@ -1,108 +1,150 @@
-# Neuro Pipeline
+# NeuroAd Pipeline
 
-A Python module for image analysis and neural scoring. Extracts visual metrics from images and calculates attention scores and emotional valence based on color analysis.
+A Python brand intelligence pipeline that performs omni-channel research, neural scoring, and AI-audited report generation — running entirely on local hardware via Ollama-compatible models.
 
 ## Overview
 
-The Neuro Pipeline takes an image and performs the following steps:
+The pipeline has two independent paths:
 
-1. **Image Analysis** - Extracts dimensions, color histogram (RGB), and brightness score
-2. **Neural Scoring** - Calculates:
-   - **Attention Score** (0-1): Based on brightness and color variance
-   - **Emotional Valence** (-1 to 1): Based on color temperature (warm vs cool)
+### Pipeline B — Brand Intelligence (Research)
 
-## Installation
-
-```bash
-pip install pillow
+```
+SearXNG Web Context → Gemma 4 Baseline → DeepSeek R1 Validation
+    → Brand Profile → Social/Science Scraping → Mass Scraper
+    → STORM Report (RAG) → Council Audit
 ```
 
-## Usage
+**Entry:** `brand_orchestrator.py` or `watchdog.py`
 
-### As a Python Module
+### Pipeline A — Neural Scoring
+
+```
+TRIBE v2 + ViNet-S/A + CLIP + HSEmotion → Composite Brand Grade
+```
+
+**Entry:** `pipeline_runner.py`
+
+## Prerequisites
+
+- Ubuntu 24.04 with AMD ROCm drivers
+- Python 3.12+
+- [Lemonade](https://github.com/ollama/ollama) server (port 8888 + proxy on 9002)
+- SearXNG instance (port 8889)
+- PyTorch with ROCm support
+- ChromaDB, yt-dlp, curl_cffi, sentence-transformers
+
+## Local LLM Setup (Ollama)
+
+All LLM inference runs locally — no OpenAI, Anthropic, or other cloud API keys required.
+
+### 1. Start the model server
+
+```bash
+lemonade-server serve \
+  --host 0.0.0.0 \
+  --port 8888 \
+  --extra-models-dir /home/vincent/jarvis_os/models \
+  --ctx-size 32768
+```
+
+Models are loaded from `extra_models_dir` via GGUF format. The server exposes an OpenAI-compatible API at `http://127.0.0.1:8888`.
+
+### 2. Configure the proxy
+
+In `config_core.py`, the proxy listens on port 9002:
 
 ```python
-from neuro_pipeline import ImageAnalyzer, NeuralScorer
-
-# Analyze an image
-analyzer = ImageAnalyzer('path/to/image.jpg')
-analysis = analyzer.analyze()
-
-print(f"Dimensions: {analysis['dimensions']}")
-print(f"Brightness: {analysis['brightness_score']}")
-
-# Score the image
-scorer = NeuralScorer()
-scores = scorer.score(analysis)
-
-print(f"Attention Score: {scores.attention_score}")
-print(f"Emotional Valence: {scores.emotional_valence}")
+LLM_URL = "http://127.0.0.1:9002/v1/chat/completions"
 ```
 
-### Command Line Interface
+### 3. Verify the server
 
 ```bash
-# Run on an image (outputs JSON to stdout)
-python -m neuro_pipeline.main path/to/image.jpg
-
-# Save results to a file
-python -m neuro_pipeline.main path/to/image.jpg --output results.json
-
-# Verbose mode
-python -m neuro_pipeline.main path/to/image.jpg -v
+curl http://127.0.0.1:8888/models | python -m json.tool
 ```
 
-## Output Format
+### Models
 
-The pipeline returns a dictionary with two main sections:
+| Role | Model | GGUF File |
+|------|------|-----------|
+| Workhorse | Gemma 4 31B | `extra.gemma-4-31B-it-Q4_K_M.gguf` |
+| Judge | DeepSeek R1 70B | `extra.DeepSeek-R1-Distill-Llama-70B-Q4_K_M.gguf` |
+| Fast | Kimi Linear 48B | `extra.moonshotai_Kimi-Linear-48B-A3B-Instruct-Q5_K_M.gguf` |
 
-```json
-{
-  "image_path": "path/to/image.jpg",
-  "analysis": {
-    "width": 1920,
-    "height": 1080,
-    "dimensions": [1920, 1080],
-    "brightness_score": 0.45
-  },
-  "scores": {
-    "attention_score": 0.72,
-    "emotional_valence": 0.34,
-    "brightness_score": 0.45,
-    "color_variance": 0.68
-  }
-}
+Configured in `config_core.py`:
+
+```python
+MODEL_WORKHORSE = "extra.gemma-4-31B-it-Q4_K_M.gguf"
+MODEL_JUDGE     = "extra.DeepSeek-R1-Distill-Llama-70B-Q4_K_M.gguf"
+MODEL_FAST      = "extra.moonshotai_Kimi-Linear-48B-A3B-Instruct-Q5_K_M.gguf"
 ```
 
-## Classes
+## Running the Pipeline
 
-### ImageAnalyzer
+### Direct invocation (Pipeline B — Research)
 
-Analyzes images and extracts visual metrics.
+```bash
+python brand_orchestrator.py "Apple"
+```
 
-- `__init__(image_path)`: Initialize with image path
-- `analyze()`: Run full analysis, returns dict with metrics
+Or with a custom brand:
 
-### NeuralScorer
+```bash
+python brand_orchestrator.py "Nike"
+```
 
-Calculates neural scores from analysis results.
+Results are saved to `raw_data/{brand}_YYYYMMDD_HHMMSS/`.
 
-- `__init__()`: Initialize scorer
-- `score(analysis_results)`: Calculate scores, returns `NeuroScore` dataclass
+### Watchdog mode (self-healing)
 
-### NeuroScore
+```bash
+python watchdog.py
+```
 
-Dataclass containing:
-- `attention_score`: 0-1 (higher = more attention-grabbing)
-- `emotional_valence`: -1 to 1 (negative = cool, positive = warm)
-- `brightness_score`: 0-1
-- `color_variance`: 0-1
+Watchdog monitors campaign logs (`campaigns/{brand}_run.log`) for errors and creates Multica tickets for unique tracebacks. It includes an infinite-loop guard that stops ticket spam after 5 occurrences of the same error at the same location.
 
-## Color Temperature Heuristics
+### Direct invocation (Pipeline A — Scoring)
 
-- **Warm colors** (red/orange dominant): Positive valence
-- **Cool colors** (blue dominant): Negative valence
-- **Neutral colors**: Valence near 0
+```bash
+# Run on a campaign
+python pipeline_runner.py campaigns/nike_2026/
+
+# Skip slow modules
+python pipeline_runner.py campaigns/nike_2026/ --skip tribe emotion
+
+# Run only CLIP scoring
+python pipeline_runner.py campaigns/nike_2026/ --only clip
+
+# With custom brand labels
+python pipeline_runner.py campaigns/nike_2026/ --brand-labels "sporty" "premium"
+```
+
+### Quick setup
+
+```bash
+bash setup.sh
+```
+
+## Output
+
+Pipeline B produces:
+- `Phase_0_Verified_Seed.md` — validated brand baseline
+- `Phase_4_STORM_Report.md` — 8-chapter Wikipedia-style intelligence report
+- `Phase_5_Council_Audit.md` — executive audit summary
+- `raw_data/` — all scraped URLs, text, and structured data
+
+Pipeline A produces:
+- `reports/pipeline_a_results.json` — ranked asset scores with grades (A-D)
+- `scores/` — per-asset JSON scores for each module
+
+## Architecture
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for full details on:
+- The 5 phases of Pipeline B
+- Pipeline A scoring modules
+- Watchdog infinite-loop guard mechanism
+- Checkpoint / resume system
+- VRAM management via SequentialTribeScorer
 
 ## License
 
