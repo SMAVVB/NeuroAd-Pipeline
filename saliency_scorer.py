@@ -47,11 +47,10 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s - %(message)s")
 # ---------------------------------------------------------------------------
 
 VINET_S_DIR = Path(__file__).parent / "tools" / "ViNet_v2" / "ViNet_S"
-WEIGHTS_DIR  = Path(__file__).parent / "tools" / "ViNet_v2" / "saved_models"
+VINET_FINAL_MODELS = Path(__file__).parent / "tools" / "ViNet_v2" / "final_models"
 
-# Expected checkpoint name after unzipping weights.zip
-# Adjust if the zip extracts to a different name
-CHECKPOINT_NAME = "DHF1K_vinet_s_rootgrouped_32_bs8_kld_cc.pt"
+# Actual checkpoint for ViNet-S (already extracted in final_models/)
+CHECKPOINT_NAME = "vinet_s_dhf1k.pt"
 
 
 # ---------------------------------------------------------------------------
@@ -140,16 +139,14 @@ def preprocess_frames(
 def find_checkpoint() -> Path | None:
     """Search for ViNet-S checkpoint in known locations."""
     candidates = [
-        WEIGHTS_DIR / CHECKPOINT_NAME,
-        VINET_S_DIR / "saved_models" / CHECKPOINT_NAME,
-        VINET_S_DIR / CHECKPOINT_NAME,
-        Path(__file__).parent / "tools" / "ViNet_v2" / CHECKPOINT_NAME,
+        VINET_FINAL_MODELS / "ViNet_S" / "vinet_s_visual_dataset_models" / "vinet_s_dhf1k.pt",
+        VINET_FINAL_MODELS / "ViNet_A" / "vinet_a_visual_dataset_models" / "vinet_a_dhf1k_no_split_0.85294.pt",
     ]
-    # Also search recursively in weights dir
-    for root in [WEIGHTS_DIR, Path(__file__).parent / "tools" / "ViNet_v2"]:
+    # Also search recursively in final_models dir
+    for root in [VINET_FINAL_MODELS, VINET_S_DIR]:
         if root.exists():
             for p in root.rglob("*.pt"):
-                if "vinet_s" in p.name.lower() or "ViNet_S" in str(p):
+                if "dhf1k" in p.name.lower():
                     candidates.append(p)
 
     for path in candidates:

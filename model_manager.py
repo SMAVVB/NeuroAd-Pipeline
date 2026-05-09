@@ -317,6 +317,12 @@ class SequentialTribeScorer:
             logger.info(f"[DRY RUN] Skipping inference for {Path(asset_path).name}")
             return np.zeros((10, 20484), dtype=np.float32)
 
+        # Force CPU for V-JEPA2 inference (ROCm GPU ops crash on AMD Strix Halo)
+        # V-JEPA2 requires CUDA kernels not available on this ROCm build
+        original_device = self.device
+        self.device = 'cpu'
+        logger.info("[TRIBE] Forcing CPU device for V-JEPA2 inference (ROCm incompatible)")
+        
         try:
             # Step 1: Build events DataFrame (loads all extractors internally)
             kwargs = {}
@@ -357,6 +363,8 @@ class SequentialTribeScorer:
             import traceback
             traceback.print_exc()
             return None
+        finally:
+            self.device = original_device
 
 
     def _fallback_predict(

@@ -151,7 +151,7 @@ DEFAULT_CONFIG = {
     #    class SigLIP2ScorerModule(BaseScorerModule):
     #        def __init__(self, name: str, version: str):
     #            super().__init__(name, version)
-    #            self.device = "cuda" if torch.cuda.is_available() else "cpu"
+    #            self.device = "cpu"  # ROCm incompatible
     #            self.model, self.preprocess = siglip2.load("ViT-L/16", device=self.device)
     #        def score(self, asset_path: str, brand_context: dict) -> dict:
     #            # ... scoring logic ...
@@ -256,7 +256,7 @@ def run_saliency(asset_path: Path, config: dict, scores_dir: Path,
 
     scorer = SaliencyScorer(
         checkpoint_path=checkpoint,
-        device=config["saliency"]["device"],
+        device="cpu", # ROCm incompatible — use CPU
         n_frames=config["saliency"]["n_frames"],
     )
     result = scorer.score_asset(str(asset_path), rois=rois, save_outputs=True)
@@ -278,7 +278,7 @@ def run_clip(asset_path: Path, config: dict, scores_dir: Path) -> dict:
         logger.info(f"  [CLIP] Cache hit: {cached_path.name}")
         return json.loads(cached_path.read_text())
 
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    device = "cpu"  # ROCm incompatible
     model, preprocess = clip_lib.load(config["clip"]["model_name"], device=device)
     brand_labels = config["clip"]["brand_labels"]
 

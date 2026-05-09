@@ -1,19 +1,19 @@
 import os
 import json
+import logging
 import requests
 import time
 from datetime import datetime
 from pathlib import Path
 
 # --- KONFIGURATION ---
-# LLM_URL: Proxy für Token Tracking (Port 9002) → Lemonade (Port 8888)
-LLM_URL = "http://127.0.0.1:9002/v1/chat/completions"
+LLM_URL = "http://127.0.0.1:11434/v1/chat/completions"
 SEARXNG_URL = "http://127.0.0.1:8889/search"
 RAW_DATA_DIR = "raw_data" 
 
-MODEL_WORKHORSE = "extra.gemma-4-31B-it-Q4_K_M.gguf"
-MODEL_JUDGE = "extra.DeepSeek-R1-Distill-Llama-70B-Q4_K_M.gguf"
-MODEL_FAST = "extra.moonshotai_Kimi-Linear-48B-A3B-Instruct-Q5_K_M.gguf"
+MODEL_WORKHORSE = "qwen3.6:35b-a3b-q4_K_M"
+MODEL_JUDGE = "qwen3.6:35b-a3b-q4_K_M"
+MODEL_FAST = "qwen3.5:4b"
 MEMORY_FILE = "agent_learnings.json"
 
 def load_memory() -> str:
@@ -64,22 +64,8 @@ def ask_llm(system_prompt: str, user_prompt: str, model_name: str, temperature: 
 
             content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
 
-            # Token logging after successful API call
-            try:
-                usage = data.get("usage", {})
-                log_entry = {
-                    "timestamp": datetime.now().isoformat(),
-                    "model": model_name,
-                    "input_tokens": usage.get("prompt_tokens", 0),
-                    "output_tokens": usage.get("completion_tokens", 0),
-                    "project": os.path.basename(os.getcwd()),
-                    "tps": usage.get("tokens_per_second", 0)
-                }
-                log_file = Path.home() / ".lemonade_token_log.jsonl"
-                with open(log_file, "a", encoding="utf-8") as f:
-                    f.write(json.dumps(log_entry) + "\n")
-            except Exception:
-                pass  # Don't fail if logging fails
+            # Token logging REMOVED - Ollama does not support token tracking
+            # Ollama provides no token_usage data, this code was legacy from lemonade proxy era
 
             if not content.strip():
                 print(f"\n⚠️ ALARM: Leere Antwort vom Modell (Versuch {attempt+1}/{max_retries}).")
@@ -107,7 +93,7 @@ def search_searxng(query: str, category: str = "general") -> list:
     forbidden_extensions = [".pdf", ".docx", ".xlsx", ".zip"] 
     
     try:
-        res = requests.get(SEARXNG_URL, params=params, timeout=10)
+        res = requests.post(SEARXNG_URL, data=params, timeout=10)
         res.raise_for_status()
         
         valid_urls = []
@@ -120,3 +106,21 @@ def search_searxng(query: str, category: str = "general") -> list:
         return valid_urls[:20] 
     except Exception:
         return []
+
+
+def get_logger(name: str = __name__, level: int = logging.INFO) -> logging.Logger:
+    """Return a logger that writes to both the default stream and a campaign log file."""
+    logger = logging.getLogger(name)
+    if logger.handlers:
+        return logger
+    logger.setLevel(level)
+
+    fmt = logging.Formatter("%(asctime)s %(levelname)s - %(message)s", datefmt="%H:%M:%S")
+
+    # console handler
+    ch = logging.StreamHandler()
+    ch.setLevel(level)
+    ch.setFormatter(fmt)
+    logger.addHandler(ch)
+
+    return logger
