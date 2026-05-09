@@ -77,8 +77,8 @@ class MiroFishClient:
         }
         data = {
             "simulation_requirement": context,
-            "llm_model": "extra.Qwen2.5-14B-Instruct-Q4_K_M.gguf",
-            "embedding_model": "extra.bge-m3-FP16.gguf"
+            "llm_model": "qwen2.5:14b",
+            "embedding_model": "nomic-embed-text"
         }
         
         response = requests.post(
@@ -96,8 +96,8 @@ class MiroFishClient:
             f"{self.base_url}/graph/build",
             json={
                 "project_id": project_id,
-                "llm_model": "extra.Qwen2.5-14B-Instruct-Q4_K_M.gguf",
-                "embedding_model": "extra.bge-m3-FP16.gguf"
+                "llm_model": "qwen2.5:14b",
+                "embedding_model": "nomic-embed-text"
             }
         )
         data = self._check_success(response, "Graph Build")
@@ -116,8 +116,8 @@ class MiroFishClient:
                 "project_id": project_id,
                 "graph_id": graph_id,
                 "name": campaign_name,
-                "llm_model": "extra.Qwen2.5-14B-Instruct-Q4_K_M.gguf",
-                "embedding_model": "extra.bge-m3-FP16.gguf"
+                "llm_model": "qwen2.5:14b",
+                "embedding_model": "nomic-embed-text"
             }
         )
         data = self._check_success(response, "Simulation Creation")
@@ -361,7 +361,7 @@ class MiroFishClient:
         system_prompt = """Du bist ein Datenanalyst. Lies den folgenden Report und extrahiere exakt vier Metriken zwischen 0.0 und 1.0 als reines JSON-Objekt ohne Markdown-Formatierung: positive_sentiment, negative_sentiment, virality_score, controversy_risk."""
         
         payload = {
-            "model": "extra.Qwen2.5-14B-Instruct-Q4_K_M.gguf",
+            "model": "qwen2.5:14b",
             "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": markdown_content}
