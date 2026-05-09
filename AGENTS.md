@@ -63,3 +63,19 @@ IMMER vollständigen Pfad nutzen:
 
 Oder venv aktivieren:
 source /home/vincent/neuro_pipeline_project/venv_rocm/bin/activate && python script.py
+
+## Pipeline A starten via Hermes
+WICHTIG: Pipeline A nutzt GPU (TRIBE, ROCm). Während Pipeline läuft KEIN Ollama nutzen.
+Hermes muss /background nutzen und dann warten — kein paralleles LLM-Calling.
+
+Workflow:
+1. /background in Discord
+2. source venv_rocm/bin/activate && bash hermes_pipeline_run.sh
+3. Warten bis fertig
+4. Log auswerten auf Errors/Scores/Grades
+5. Fehler analysieren, Fix vorschlagen — NICHT automatisch ohne Bestätigung
+
+Nike Campaign: campaigns/nike_summer_26
+Assets: assets/nike_clip_A.mp4, assets/nike_clip_B.mp4
+
+Bei Fehler: Traceback aus Log, Ursache erklären, Fix vorschlagen.
