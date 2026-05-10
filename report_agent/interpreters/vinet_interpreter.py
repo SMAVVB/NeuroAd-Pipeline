@@ -9,10 +9,13 @@ Analyzes ViNet visual attention/saliency scores and generates:
 """
 
 import json
+import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from report_agent.interpreters.base_interpreter import BaseInterpreter
+
+logger = logging.getLogger(__name__)
 
 
 class ViNetInterpreter(BaseInterpreter):
@@ -49,8 +52,12 @@ class ViNetInterpreter(BaseInterpreter):
             "inference_time_s": 6.9
         }
         """
-        with open(scores_path, 'r', encoding='utf-8') as f:
-            return json.load(f)
+        try:
+            with open(scores_path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except json.JSONDecodeError:
+            logger.warning("Corrupt ViNet scores file, returning empty dict: %s", scores_path)
+            return {}
     
     def interpret(
         self, 

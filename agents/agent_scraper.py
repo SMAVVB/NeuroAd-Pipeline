@@ -36,9 +36,13 @@ def init_url_queue(db_path: str) -> sqlite3.Connection:
     - urls(id, url UNIQUE, status DEFAULT 'pending', scraped_at, chunk_count, error, source_type, year, language, priority, paywall_bypassed)
     - chunks(id, url, content, char_count, source_type, year, language)
     """
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(db_path, timeout=20)
     cursor = conn.cursor()
-    
+
+    # Enable Write-Ahead Logging for better async concurrency
+    cursor.execute("PRAGMA journal_mode=WAL;")
+    cursor.execute("PRAGMA synchronous=NORMAL;")
+
     # URLs-Tabelle
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS urls (

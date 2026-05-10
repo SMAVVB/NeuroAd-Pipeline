@@ -10,10 +10,13 @@ Each interpreter must implement:
 """
 
 import json
+import logging
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from config_core import ask_llm, MODEL_WORKHORSE
+
+logger = logging.getLogger(__name__)
 
 
 class BaseInterpreter(ABC):
@@ -95,5 +98,9 @@ class BaseInterpreter(ABC):
     
     def _load_json(self, path: Path) -> Dict[str, Any]:
         """Helper to load JSON file."""
-        with open(path, 'r', encoding='utf-8') as f:
-            return json.load(f)
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except json.JSONDecodeError:
+            logger.warning("Corrupt JSON file, returning empty dict: %s", path)
+            return {}

@@ -11,14 +11,14 @@ from crawl4ai import AsyncWebCrawler
 from brand_graph_manager import BrandGraphManager, URI, AUTH
 
 # --- 1. KONFIGURATION ---
-LLM_URL = "http://127.0.0.1:11434/v1/chat/completions" # Ollama
+OLLAMA_URL = "http://172.17.0.1:8888/v1/chat/completions" # Deine Lemonade IP
 SEARXNG_URL = "http://127.0.0.1:8889/search"
 RAW_DATA_DIR = "raw_data" 
 
-# Alle Agents → Qwen 3.6 (Ollama)
-MODEL_WORKHORSE = "qwen3.6:35b-a3b-q4_K_M"
-MODEL_CRITIC = "qwen3.6:35b-a3b-q4_K_M"
-MODEL_JUDGE = "qwen3.6:35b-a3b-q4_K_M"
+# Deine Next-Gen Modell-Flotte (mit extra.-Präfix für Lemonade)
+MODEL_WORKHORSE = "extra.gemma-4-31B-it-Q4_K_M.gguf"
+MODEL_CRITIC = "extra.moonshotai_Kimi-Linear-48B-A3B-Instruct-Q5_K_M.gguf"
+MODEL_JUDGE = "extra.DeepSeek-R1-Distill-Llama-70B-Q4_K_M.gguf"
 
 # --- 2. DYNAMISCHER API-CALL ---
 def ask_llm(system_prompt: str, user_prompt: str, model_name: str, temperature: float = 0.2) -> str:
@@ -32,7 +32,7 @@ def ask_llm(system_prompt: str, user_prompt: str, model_name: str, temperature: 
         "temperature": temperature
     }
     # Timeout auf 900s erhöht für maximale Skalierung
-    response = requests.post(LLM_URL, json=payload, timeout=900)
+    response = requests.post(OLLAMA_URL, json=payload, timeout=900)
     response.raise_for_status()
     return response.json().get("choices", [{}])[0].get("message", {}).get("content", "")
 

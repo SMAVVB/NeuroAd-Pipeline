@@ -231,6 +231,32 @@ async def proxy_mirofish(campaign_name: str, graph_id: str | None = None) -> Any
         }
 
 
+@app.get("/api/watchdog/status")
+async def get_watchdog_status() -> dict[str, Any]:
+    """Read watchdog_status.json from the project root.
+
+    Returns its JSON contents if the file exists, otherwise a default offline status.
+    """
+    # Look in project root (parent of dashboard/).
+    project_root = Path(__file__).resolve().parent.parent.parent
+    watchdog_status_path = project_root / "watchdog_status.json"
+
+    if watchdog_status_path.exists():
+        try:
+            with open(watchdog_status_path, "r") as f:
+                return json.load(f)
+        except json.JSONDecodeError as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to parse watchdog_status.json: {str(e)}"
+            )
+
+    return {
+        "current_status": "Offline",
+        "total_crashes_handled": 0,
+    }
+
+
 @app.get("/health")
 async def health_check() -> dict[str, str]:
     """Health check endpoint."""
