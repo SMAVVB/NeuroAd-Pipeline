@@ -7,8 +7,8 @@ from dotenv import load_dotenv
 
 load_dotenv(Path.home() / ".hermes" / ".env")
 
-DISCORD_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
-CHANNEL_ID = os.getenv("DISCORD_HOME_CHANNEL")
+DISCORD_TOKEN=os.getenv("DISCORD_BOT_TOKEN") or os.getenv("DISCORD_TOKEN") or ""
+CHANNEL_ID = os.getenv("DISCORD_HOME_CHANNEL") or os.getenv("DISCORD_CHANNEL_ID") or ""
 
 def notify(message: str):
     headers = {
