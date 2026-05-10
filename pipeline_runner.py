@@ -133,6 +133,13 @@ DEFAULT_CONFIG = {
         "checkpoint": None,  # Auto-detected from tools/ViNet_v2/final_models/
         # Set to "vinet_a" to use Audio-Visual model instead of ViNet-S
         "model_variant": "vinet_s",
+        # ROI bounding boxes {name: (x1, y1, x2, y2)} in image pixel coords
+        # Uncomment and set coordinates before using ROI attention scoring
+        "rois": {
+            # "product": (x1, y1, x2, y2),  # <-- Set ROI coordinates here
+            # "brand":   (x1, y1, x2, y2),  # <-- Set ROI coordinates here
+            # "cta":     (x1, y1, x2, y2),  # <-- Set ROI coordinates here
+        },
     },
 
     # CLIP
@@ -602,6 +609,13 @@ def run_pipeline_a(
     if brand_labels:
         cfg["clip"]["brand_labels"] = brand_labels
 
+    # ── Load ROIs from config + CLI ─────────────────────────────
+    # Start with ROI definitions from config (if any are uncommented)
+    config_rois = cfg.get("saliency", {}).get("rois", {})
+    cli_rois = rois or {}
+    # CLI args take precedence over config entries
+    merged_rois = {**config_rois, **cli_rois}
+
     # Apply skip/only
     skip = set(skip_modules or [])
     only = set(only_modules or [])
@@ -661,11 +675,12 @@ def run_pipeline_a(
         if cfg["modules"]["saliency"]["enabled"]:
             logger.info("\n[2/5] ViNet-S Saliency Scoring...")
             try:
-                saliency_result = run_saliency(asset, cfg, scores_dir, rois=rois)
+                saliency_result = run_saliency(asset, cfg, scores_dir, rois=merged_rois)
                 asset_scores["saliency"] = saliency_result
                 logger.info(
                     f"  center_bias={saliency_result.get('center_bias', 0):.3f} "
                     f"mean_saliency={saliency_result.get('mean_saliency', 0):.3f}"
+                    f"  (ROIs: {list(merged_rois.keys()) if merged_rois else 'none'})"
                 )
             except Exception as e:
                 logger.error(f"  Saliency failed: {e}")

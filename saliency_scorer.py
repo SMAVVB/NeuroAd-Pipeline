@@ -5,7 +5,7 @@ saliency_scorer.py — ViNet-S Video Saliency Scorer for NeuroAd Pipeline
 Wraps ViNet++ (ViNet-S) to produce:
 - Per-frame saliency maps (numpy arrays)
 - Overlay PNGs (heatmap over original frame)
-- Attention scores for user-defined ROIs (product, logo, CTA bounding boxes)
+- Attention scores for user-defined ROIs (product, brand, CTA bounding boxes)
 - Summary JSON compatible with composite_scorer.py
 
 Usage:
@@ -16,7 +16,7 @@ Usage:
         asset_path="campaigns/nike/assets/spot.mp4",
         rois={
             "product": (100, 200, 400, 500),  # (x1, y1, x2, y2) in pixels
-            "logo":    (10,  10,  120, 80),
+            "brand":   (10,  10,  120, 80),
         }
     )
     print(result["product_attention"])  # 0.0 - 1.0
@@ -536,7 +536,7 @@ class SaliencyScorer:
             "asset_type":          "image" if is_image else "video",
             # ROI scores (0-1)
             "product_attention":   roi_scores.get("product", 0.0),
-            "brand_attention":     roi_scores.get("logo", roi_scores.get("brand", 0.0)),
+            "brand_attention":    roi_scores.get("brand", roi_scores.get("product", 0.0)),
             "cta_attention":       roi_scores.get("cta", 0.0),
             "roi_scores":          roi_scores,
             # Global metrics
