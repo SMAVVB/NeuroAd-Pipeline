@@ -150,34 +150,43 @@ def poll_discord_messages(last_seen_id: str = "", max_retries: int = 100000) -> 
     return (None, None)
 
 
-def wait_for_fix_response(phase_name: str, branch_name: str):
+def wait_for_fix_response(phase_name: str, branch_name: str, dry_run: bool = False, poll_timeout: int = 5):
     """
     Wait for Discord FIX_READY:branch or FIX_FAILED. No timeout.
     Poll every 60s.
+    
+    In dry_run mode:
+      - No actual Discord API calls
+      - Simulates FIX_READY after ~poll_timeout seconds
+      - Polls every 2s instead of 60s
     """
-    logger.info(f"  📡 Polle Discord auf Fix-Response für {phase_name}...")
-    logger.info(f"  📡 Branch: {branch_name}")
-
-    last_msg_id = ""
-    poll_count = 0
-
-    while True:
-        time.sleep(60)
-        poll_count += 1
-
-        found_type, branch = poll_discord_messages(last_msg_id)
-        if found_type == "FIX_READY":
-            logger.info(f"  ✅ FIX_READY: {branch}")
-            return ("FIX_READY", branch)
-        elif found_type == "FIX_FAILED":
-            logger.info(f"  ❌ FIX_FAILED empfangen")
-            return ("FIX_FAILED", None)
-        elif found_type == "POLLING":
-            last_msg_id = branch  # reuse for pagination
-        # If None, continue polling
-
-        if poll_count % 60 == 0:  # Log every 60 polls (~1h)
-            logger.info(f"  ⏳ Polling aktiv... ({poll_count * 60}s)")
+    if dry_run:
+        # Simulate waiting for user to send FIX_READY in Discord
+        poll_count = 0
+        while True:
+            # Check if the user's "mock FIX_READY" message exists
+            from dotenv import load_dotenv
+            from pathlib import Path as P
+            load_dotenv(P.home() / ".hermes" / ".env")
+            token = os.getenv("DISCORD_BOT_TOKEN") or os.getenv("DISCORD_TOKEN") or ""
+            channel = DISCORD_CHANNEL_ID or os.getenv("DISCORD_HOME_CHANNEL") or ""
+            if not token or not channel:
+                logger.info("  ⚠️  [MOCK] No Discord creds — using built-in mock FIX_READY")
+                time.sleep(poll_timeout)
+                mock_branch = f"mock-fix-{branch_name}-{poll_count}"
+                logger.info(f"  ✅ FIX_READY: {mock_branch} [MOCKED]")
+                return ("FIX_READY", mock_branch)
+            # Actually poll Discord for user's FIX_READY message
+            poll_count += 1
+            found_type, branch = poll_discord_messages("")
+            if found_type == "FIX_READY":
+                logger.info(f"  ✅ FIX_READY: {branch}")
+                return ("FIX_READY", branch)
+            # If POLLING but no FIX_READY, continue
+            if poll_count % 3 == 0 and found_type is None:
+                logger.info(f"  🎭 [MOCK] Poll {poll_count} — kein FIX_READY yet, warte weiter...")
+            time.sleep(2)
+        return ("FIX_READY", f"mock-fix-{branch_name}-dryrun")
 
 
 # ─── Git Helpers ─────────────────────────────────────────────────────────────
@@ -194,8 +203,11 @@ def git_status():
         return "unknown"
 
 
-def create_fix_branch(branch_name: str):
+def create_fix_branch(branch_name: str, dry_run: bool = False):
     """Create fix branch from current HEAD (never main)."""
+    if dry_run:
+        logger.info(f"  🎭 [MOCK] create_fix_branch '{branch_name}' — skipped")
+        return True
     main_branch = git_status()
     cmd = ["git", "checkout", "-b", branch_name]
     if main_branch != "HEAD":
@@ -212,8 +224,11 @@ def create_fix_branch(branch_name: str):
     return False
 
 
-def merge_fix_branch(branch_name: str):
+def merge_fix_branch(branch_name: str, dry_run: bool = False):
     """Merge fix branch into current branch."""
+    if dry_run:
+        logger.info(f"  🎭 [MOCK] merge_fix_branch '{branch_name}' — skipped")
+        return True
     # Checkout main first
     main_branch = git_status()
     if main_branch != "HEAD":
@@ -270,8 +285,12 @@ def check_gpu_usage(timeout_minutes=10):
     return True
 
 
-def wait_between_phases():
-    """5min Pause + GPU Check."""
+def wait_between_phases(dry_run: bool = False):
+    """5min Pause + GPU Check. In dry_run: 5s, no GPU check."""
+    if dry_run:
+        logger.info(f"⏸️  [MOCK] Warte 5s statt 5min")
+        time.sleep(5)
+        return
     logger.info("⏸️  Warte 5min + GPU Check...")
     time.sleep(300)
     check_gpu_usage(10)
@@ -325,9 +344,15 @@ class PhaseResult:
 
 # ─── Phase Runner mit Fix-Logic ─────────────────────────────────────────────
 
-def run_phase_with_fix_logic(phase_name: str, phase_num: int, phase_func, loop_results: list):
+def run_phase_with_fix_logic(phase_name: str, phase_num: int, phase_func, loop_results: list, dry_run: bool = False):
     """
     Phase mit maximal 3 Versuchen, Discord-Nachrichten, Fix-Branch und Discord-Polling.
+    
+    In dry_run mode:
+      - time.sleep(300) → 5s
+      - GPU Check wird übersprungen
+      - Fix-Branch Creation mockt (git checkout -b würde real erstellt)
+      - Discord Polling mockt (simuliert FIX_READY nach kurzer Wartezeit)
     """
     result = PhaseResult(phase_name, phase_num)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -373,19 +398,19 @@ def run_phase_with_fix_logic(phase_name: str, phase_num: int, phase_func, loop_r
 
         # Git: Fix Branch erstellen
         branch_name = f"fix/auto-{phase_name}-{timestamp}"
-        create_fix_branch(branch_name)
+        create_fix_branch(branch_name, dry_run)
         result.branch_name = branch_name
 
         # Discord: Fix Branch created
         branch_msg = f"🔧 Branch `fix/auto-{phase_name}-{timestamp}` erstellt, warte auf Fix..."
         send_discord_notification(branch_msg)
 
-        # Discord Polling (unbegrenzt)
-        fix_response = wait_for_fix_response(phase_name, branch_name)
+        # Discord Polling (unbegrenzt / dry_run: simulierte Zeit)
+        fix_response = wait_for_fix_response(phase_name, branch_name, dry_run)
         fix_type = fix_response[0]
 
         if fix_type == "FIX_READY" and fix_response[1]:
-            merged = merge_fix_branch(fix_response[1])
+            merged = merge_fix_branch(fix_response[1], dry_run)
             if merged:
                 logger.info(f"  🔄 Fix gemerged — retry Phase {phase_num}...")
                 continue  # Retry the phase
@@ -399,8 +424,12 @@ def run_phase_with_fix_logic(phase_name: str, phase_num: int, phase_func, loop_r
             result.error = f"Kein Fix empfangen für Phase {phase_num}"
 
         if attempt < max_attempts:
-            logger.info("⏸️  Warte 60s vor retry...")
-            time.sleep(60)
+            if dry_run:
+                logger.info("[MOCK] Warte 2s statt 60s vor retry...")
+                time.sleep(2)
+            else:
+                logger.info("⏸️  Warte 60s vor retry...")
+                time.sleep(60)
 
     result.duration_s = time.time() - t_start
     result.error = f"Phase {phase_name} nach {max_attempts} Versuchen gescheitert"
@@ -410,14 +439,27 @@ def run_phase_with_fix_logic(phase_name: str, phase_num: int, phase_func, loop_r
 
 # ─── Phase Implementations ───────────────────────────────────────────────────
 
-def create_phase_funcs(brand: str, campaign: str):
-    """Generiere Phase-Funktionen basierend auf brand + campaign."""
-
+def create_phase_funcs(brand: str, campaign: str, dry_run: bool = False):
+    """Generiere Phase-Funktionen basierend auf brand + campaign.
+    
+    In dry_run mode:
+      - Alle subprocess.run() werden durch mock ersetzt (returncode=0)
+      - time.sleep(300) → 5s (handled in run_phase_with_fix_logic)
+      - GPU Check wird übersprungen
+      - Phase 2 gibt returncode=1 zurück (simulierter Fehler)
+      - Notifications laufen normal
+    """
     phases = []
 
-    # ── Phase 1: Brand Research ──────────────────────────────
+    def _mock_success(attempt: int):
+        logger.info(f"  🎭 [MOCK] Phase erfolgreich nach Versuch {attempt}")
+        return True, {"mock": True, "attempt": attempt}
+
+    # ── Phase 1: Brand Research ─────────────────────────────────
     def phase1_brand_research(attempt: int):
         """PHASE 1: brand_orchestrator.py BRAND"""
+        if dry_run:
+            return _mock_success(attempt)
         cmd = [str(VENV_PYTHON), str(PROJECT_ROOT / "brand_orchestrator.py"), brand]
         logger.info(f"  Befehl: {' '.join(cmd)}")
 
@@ -456,9 +498,12 @@ def create_phase_funcs(brand: str, campaign: str):
 
     phases.append(("1_BRAND", 1, phase1_brand_research))
 
-    # ── Phase 2: Pipeline A ─────────────────────────────────
+    # ── Phase 2: Pipeline A ────────────────────────────────
     def phase2_pipeline_a(attempt: int):
         """PHASE 2: pipeline_runner.py CAMPAIGN"""
+        if dry_run:
+            logger.info(f"  🎭 [MOCK] Phase 2 - Simulierter Fehler in Versuch {attempt}")
+            return False, "DRY_RUN: Simulierter Pipeline-Fehler (Return Code 1)"
         campaign_path = PROJECT_ROOT / "campaigns" / campaign
         cmd = [str(VENV_PYTHON), str(campaign_path)]
         logger.info(f"  Befehl: {' '.join(cmd)}")
@@ -499,9 +544,11 @@ def create_phase_funcs(brand: str, campaign: str):
 
     phases.append(("2_PIPELINE_A", 2, phase2_pipeline_a))
 
-    # ── Phase 3: Report Generation ──────────────────────────
+    # ── Phase 3: Report Generation ────────────────────────────
     def phase3_report_generation(attempt: int):
         """PHASE 3: report_orchestrator.py --campaign CAMPAIGN"""
+        if dry_run:
+            return _mock_success(attempt)
         cmd = [
             str(VENV_PYTHON), str(PROJECT_ROOT / "report_agent" / "report_orchestrator.py"),
             "--campaign", campaign,
@@ -569,7 +616,12 @@ def main():
     parser = argparse.ArgumentParser(description="Overnight Loop für NeuroAd Pipeline")
     parser.add_argument("brand", help="Brand name (z.B. 'Nike')")
     parser.add_argument("campaign", help="Campaign name (z.B. 'nike_summer_26')")
+    parser.add_argument("--dry-run", action="store_true",
+                        help="Mock phase execution: skip subprocesses, 5s sleeps, sim error in Phase 2")
     args = parser.parse_args()
+
+    # Dry-run: skip subprocesses, mock phases, fast sleeps
+    dry_run = args.dry_run
 
     # Validate channel
     if not DISCORD_CHANNEL_ID:
@@ -595,18 +647,17 @@ def main():
     loop_results: list = []
 
     # Build and run phases
-    phases = create_phase_funcs(args.brand, args.campaign)
+    phases = create_phase_funcs(args.brand, args.campaign, dry_run)
 
     for phase_name, phase_num, phase_func in phases:
-        result = run_phase_with_fix_logic(phase_name, phase_num, phase_func, loop_results)
+        result = run_phase_with_fix_logic(phase_name, phase_num, phase_func, loop_results, dry_run)
         if not result.success:
             logger.warning(f"⚠️ Phase {phase_name} nicht erfolgreich — versuche nächste Phase trotzdem")
-            # Continue to next phase for now
             continue
 
         # Pause zwischen Phasen (nicht nach letzter)
         if phase_name != phases[-1][0]:
-            wait_between_phases()
+            wait_between_phases(dry_run)
 
     total_duration = time.time() - t_start
 
