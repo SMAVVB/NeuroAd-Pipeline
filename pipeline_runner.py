@@ -824,6 +824,9 @@ def run_pipeline_a(
         logger.warning(f"\n FAILED ASSETS ({len(failed_assets)}):")
         for asset_name in failed_assets:
             logger.warning(f"  - {asset_name}")
+        logger.warning(f"\n PIPELINE COMPLETED WITH {len(failed_assets)} FAILED ASSET(S). Review failed_assets in report for details.")
+        import sys
+        sys.exit(1)
     else:
         logger.info("\n All assets processed successfully!")
 

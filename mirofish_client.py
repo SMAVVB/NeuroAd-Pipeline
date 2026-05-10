@@ -372,7 +372,7 @@ class MiroFishClient:
         
         try:
             response = requests.post(
-                "http://127.0.0.1:8888/v1/chat/completions",
+                "http://127.0.0.1:11434/v1/chat/completions",
                 json=payload,
                 timeout=60
             )
