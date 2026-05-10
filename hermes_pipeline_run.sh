@@ -18,3 +18,8 @@ grep -E "ERROR|WARNING|Score|Grade|✓|✗|FAIL|SUCCESS|Traceback" "$LOG_FILE" |
 
 echo "LOG: $LOG_FILE"
 echo "EXIT: $EXIT_CODE"
+
+# Discord Notification
+SCORE=$(grep "COMPOSITE SCORE" "$LOG_FILE" | tail -1 | grep -oP '\d+\.\d+')
+ERRORS=$(grep -c "ERROR" "$LOG_FILE" || true)
+python3 /home/vincent/neuro_pipeline_project/notify_discord.py "✅ Pipeline Run fertig: $CAMPAIGN | Score: $SCORE | Errors: $ERRORS | Log: $LOG_FILE"
