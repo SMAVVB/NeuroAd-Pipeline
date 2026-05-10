@@ -773,7 +773,7 @@ def run_pipeline_a(
         # Check all module results for errors
         for module_name in ["tribe", "saliency", "clip", "emotion", "mirofish"]:
             module_result = r.get(module_name, {})
-            if isinstance(module_result, dict) and ("error" in module_result or module_result.get("failed")):
+            if isinstance(module_result, dict) and (module_result.get("error") or module_result.get("failed")):
                 has_error = True
                 break
         if has_error:
