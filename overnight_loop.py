@@ -104,9 +104,25 @@ def send_discord_direct(message: str):
 
 # ─── Discord Polling for FIX_READY ───────────────────────────────────────────
 
-def poll_discord_messages(last_seen_id: str = "", max_retries: int = 100000) -> tuple:
+def snowflake_to_timestamp(snowflake_id):
+    """Convert Discord Snowflake ID to Unix timestamp (seconds)."""
+    return (int(snowflake_id) >> 22) / 1000.0 + 1420070400.0
+
+
+def timestamp_to_snowflake(ts):
+    """Convert Unix timestamp (seconds) to Discord Snowflake ID (minimum)."""
+    return int((ts - 1420070400.0) * 1000) << 22
+
+
+def poll_discord_messages(last_seen_id: str = "", min_ts: float = 0, max_retries: int = 100000) -> tuple:
     """
     Poll Discord channel for FIX_READY:branch or FIX_FAILED messages.
+    
+    Args:
+        last_seen_id: Discord Snowflake ID of last seen message (for pagination).
+        min_ts: Minimum Unix timestamp. All messages OLDER than this are IGNORED.
+                Set to the timestamp before sending the error notification.
+    
     Returns (found_type: Optional[str], branch_name: Optional[str]).
     found_type: 'FIX_READY', 'FIX_FAILED', or None
     """
@@ -120,7 +136,8 @@ def poll_discord_messages(last_seen_id: str = "", max_retries: int = 100000) -> 
         return (None, None)
 
     headers = {"Authorization": f"Bot {token}"}
-    url = f"https://discord.com/api/v10/channels/{channel}/messages?limit=50{f'&after={last_seen_id}' if last_seen_id else ''}"
+    params = f"limit=50{f'&after={last_seen_id}' if last_seen_id else ''}"
+    url = f"https://discord.com/api/v10/channels/{channel}/messages?{params}"
 
     try:
         req = Request(url, headers=headers)
@@ -132,11 +149,23 @@ def poll_discord_messages(last_seen_id: str = "", max_retries: int = 100000) -> 
     if not isinstance(data, list):
         return (None, None)
 
+    if not data:
+        return (None, None)
+
     pattern_fix = re.compile(r"FIX_READY:(\S+)", re.IGNORECASE)
     pattern_fail = re.compile(r"FIX_FAILED", re.IGNORECASE)
 
+    # Timestamp filter: ignore messages older than min_ts
+    min_snowflake = timestamp_to_snowflake(min_ts) if min_ts > 0 else 0
+
     # Check newest first
     for msg in data[:10]:
+        msg_id = msg.get("id", "")
+        
+        # Skip messages older than our start timestamp
+        if min_snowflake > 0 and int(msg_id) < min_snowflake:
+            continue
+        
         content = msg.get("content", "")
         if pattern_fail.search(content):
             return ("FIX_FAILED", None)
@@ -145,15 +174,17 @@ def poll_discord_messages(last_seen_id: str = "", max_retries: int = 100000) -> 
             return ("FIX_READY", m.group(1))
 
     # Return last seen id for next poll
-    if data:
-        return ("POLLING", data[-1]["id"])  # oldest message returned by default
-    return (None, None)
+    return ("POLLING", data[-1]["id"])
 
 
-def wait_for_fix_response(phase_name: str, branch_name: str, dry_run: bool = False, poll_timeout: int = 5):
+def wait_for_fix_response(phase_name: str, branch_name: str, dry_run: bool = False, poll_timeout: int = 5, fix_ts: float = 0):
     """
     Wait for Discord FIX_READY:branch or FIX_FAILED. No timeout.
     Poll every 60s.
+    
+    Args:
+        fix_ts: Unix timestamp BEVOR die Fehler-Notification rausging. 
+                Alle Messages älter als dieser Timestamp werden ignoriert.
     
     In dry_run mode:
       - No actual Discord API calls
@@ -178,7 +209,7 @@ def wait_for_fix_response(phase_name: str, branch_name: str, dry_run: bool = Fal
                 return ("FIX_READY", mock_branch)
             # Actually poll Discord for user's FIX_READY message
             poll_count += 1
-            found_type, branch = poll_discord_messages("")
+            found_type, branch = poll_discord_messages("", min_ts=fix_ts)
             if found_type == "FIX_READY":
                 logger.info(f"  ✅ FIX_READY: {branch}")
                 return ("FIX_READY", branch)
@@ -401,12 +432,16 @@ def run_phase_with_fix_logic(phase_name: str, phase_num: int, phase_func, loop_r
         create_fix_branch(branch_name, dry_run)
         result.branch_name = branch_name
 
-        # Discord: Fix Branch created
+        # Discord: Fix Branch erstellt, warte auf Fix...
         branch_msg = f"🔧 Branch `fix/auto-{phase_name}-{timestamp}` erstellt, warte auf Fix..."
         send_discord_notification(branch_msg)
 
+        # SPEICHERE timestamp vor Polling — alle Messages älter ignorieren
+        # Discord Snowflake: timestamp = ((id >> 22) / 1000) - 1420070400 (in Sekunden)
+        fix_ts = time.time() - 0.5  # 500ms Puffer
+
         # Discord Polling (unbegrenzt / dry_run: simulierte Zeit)
-        fix_response = wait_for_fix_response(phase_name, branch_name, dry_run)
+        fix_response = wait_for_fix_response(phase_name, branch_name, dry_run, fix_ts=fix_ts)
         fix_type = fix_response[0]
 
         if fix_type == "FIX_READY" and fix_response[1]:
