@@ -10,31 +10,11 @@ from crawl4ai import AsyncWebCrawler
 # Importiere unseren Manager aus der anderen Datei
 from brand_graph_manager import BrandGraphManager, URI, AUTH
 
-# --- 1. KONFIGURATION ---
-OLLAMA_URL = "http://172.17.0.1:8888/v1/chat/completions" # Deine Lemonade IP
-SEARXNG_URL = "http://127.0.0.1:8889/search"
-RAW_DATA_DIR = "raw_data" 
+# Importiere zentrale Konfiguration (Unified Ollama Endpoint + Modell-Flotte)
+from config_core import ask_llm, OLLAMA_URL, SEARXNG_URL, RAW_DATA_DIR, MODEL_WORKHORSE, MODEL_JUDGE
 
-# Deine Next-Gen Modell-Flotte (mit extra.-Präfix für Lemonade)
-MODEL_WORKHORSE = "extra.gemma-4-31B-it-Q4_K_M.gguf"
-MODEL_CRITIC = "extra.moonshotai_Kimi-Linear-48B-A3B-Instruct-Q5_K_M.gguf"
-MODEL_JUDGE = "extra.DeepSeek-R1-Distill-Llama-70B-Q4_K_M.gguf"
-
-# --- 2. DYNAMISCHER API-CALL ---
-def ask_llm(system_prompt: str, user_prompt: str, model_name: str, temperature: float = 0.2) -> str:
-    """Dynamischer Call: Das Backend lädt das Modell automatisch bei einem Namenswechsel."""
-    payload = {
-        "model": model_name,
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt}
-        ],
-        "temperature": temperature
-    }
-    # Timeout auf 900s erhöht für maximale Skalierung
-    response = requests.post(OLLAMA_URL, json=payload, timeout=900)
-    response.raise_for_status()
-    return response.json().get("choices", [{}])[0].get("message", {}).get("content", "")
+# Unified Model Fleet — alle Agenten nutzen qwen3.6-64k:latest
+# MODEL_JUDGE wird für Juror 2 und Judge verwendet
 
 # --- 3. PHASE 0 & 1: BASELINE & SUCHBAUM ---
 def generate_phase_0_baseline(brand: str, note: str) -> str:
@@ -159,7 +139,7 @@ async def crawl_and_map_batches(urls: list[str], brand: str, note: str, save_dir
 
 # --- 5. PHASE 3: DER KI-RAT (COUNCIL) ---
 def evaluate_data_council(brand: str, note: str, current_data: str) -> dict:
-    print(f"\n⚖️ [PHASE 3] DER KI-RAT TRITT ZUSAMMEN (Sequentieller Load)...")
+    print(f"\n⚖️ [PHASE 3] DER KI-RAT TRITT ZUSAMMEN (Sequentieller Load, Qwen 3.6)...")
     
     eval_prompt = f"""Du bist ein hochkritischer Lead-Analyst für die Marke '{brand}'.
     Lies die riesige Menge an gesammelten Rohdaten. Haben wir ein absolut umfassendes Bild zu Finanzen, Historie, Kampagnen und ungeschöntem Social Sentiment? 
@@ -168,8 +148,8 @@ def evaluate_data_council(brand: str, note: str, current_data: str) -> dict:
     print(f"   -> Lade Juror 1 ({MODEL_WORKHORSE})...")
     gemma_critique = ask_llm(eval_prompt, f"Daten:\n{current_data}", MODEL_WORKHORSE, 0.3)
     
-    print(f"   -> Lade Juror 2 ({MODEL_CRITIC})...")
-    kimi_critique = ask_llm(eval_prompt, f"Daten:\n{current_data}", MODEL_CRITIC, 0.3)
+    print(f"   -> Lade Juror 2...")
+    kimi_critique = ask_llm(eval_prompt, f"Daten:\n{current_data}", MODEL_WORKHORSE, 0.3)
     
     print(f"   -> Lade den Richter ({MODEL_JUDGE})...")
     judge_system = f"""Du bist der Chief Intelligence Officer. Du evaluierst die Big-Data-Recherche zur Marke '{brand}'.
@@ -177,7 +157,7 @@ def evaluate_data_council(brand: str, note: str, current_data: str) -> dict:
     Wenn gravierende Lücken bestehen, setze "ausreichend" auf false und generiere exakt 5 NEUE, messerscharfe Suchanfragen, um diese zu schließen.
     JSON Format: {{"ausreichend": boolean, "neue_queries": ["q1", "q2", "q3", "q4", "q5"], "begruendung": "..."}}"""
     
-    verdict_raw = ask_llm(judge_system, f"Gemma:\n{gemma_critique}\n\nKimi:\n{kimi_critique}", MODEL_JUDGE, 0.1)
+    verdict_raw = ask_llm(judge_system, f"Juror 1:\n{gemma_critique}\n\nJuror 2:\n{kimi_critique}", MODEL_JUDGE, 0.1)
     
     try:
         json_match = re.search(r'\{.*\}', verdict_raw, re.DOTALL)
@@ -200,7 +180,7 @@ def synthesize_research(brand: str, raw_text: str) -> dict:
     - "key_messages": (Array of Strings) 3-5 Kernaussagen
     - "clip_labels": (Array of Strings) 3-5 kurze englische Labels"""
     
-    # Maximaler Kontext für DeepSeek R1 für das riesige JSON
+    # Maximaler Kontext für LLM
     response = ask_llm(system_prompt, f"Brand: {brand}\n\nFakten:\n{raw_text}", MODEL_JUDGE) 
     
     try:
@@ -228,7 +208,7 @@ async def run_brand_agent(brand: str, note: str):
     all_summaries = f"--- INTERNES BASISWISSEN (GEMMA 4) ---\n{baseline}\n\n"
     
     # Phase 2: Workhorse rattert den gigantischen Baum ab
-    print(f"\n🐎 [PHASE 2] Gemma 4 arbeitet den strukturierten Suchbaum ab (Extreme Scale)...")
+    print(f"\n🐎 [PHASE 2] Qwen 3.6 arbeitet den strukturierten Suchbaum ab (Extreme Scale)...")
     for branch in search_tree.get("branches", []):
         branch_name = branch.get("branch_name", "Allgemein")
         queries = branch.get("queries", [])
@@ -248,7 +228,7 @@ async def run_brand_agent(brand: str, note: str):
     # Phase 3: Council Audit
     verdict = evaluate_data_council(brand, note, all_summaries)
     print(f"\n📢 Rats-Beschluss: Ausreichend? {verdict.get('ausreichend')}")
-    print(f"📝 Begründung des Richters (DeepSeek R1): {verdict.get('begruendung')}")
+    print(f"📝 Begründung des Richters: {verdict.get('begruendung')}")
     
     # Emergency Loop
     if not verdict.get("ausreichend") and verdict.get("neue_queries"):

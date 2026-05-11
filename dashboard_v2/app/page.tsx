@@ -156,11 +156,29 @@ function OverviewContent() {
     current.score < weakest.score ? current : weakest
   , moduleScores[0])
 
-  const recommendations = [
-    `Deploy "${bestCreative?.name}" as primary creative for maximum impact`,
-    `Improve ${weakestModule.name} metrics for balanced performance`,
-    'Consider A/B testing top 2 creatives for conversion optimization',
-  ]
+  // Generate data-driven recommendations
+  const recommendations = []
+  
+  if (bestCreative) {
+    // Rec 1: Deploy recommendation with actual score
+    recommendations.push(`Deploy "${bestCreative.name}" as primary creative (composite ${((bestCreative.overall_score * 100)).toFixed(1)}%)`)
+    
+    // Rec 2: Weakest module recommendation
+    recommendations.push(`Improve ${weakestModule.name} metrics for balanced performance`)
+    
+    // Rec 3: MiroFish insight if available
+    const bestMirofish = availableCreatives.reduce((best, c) => c.mirofish.positive_sentiment > best.mirofish.positive_sentiment ? c : best, availableCreatives[0])
+    if (bestMirofish && bestMirofish.mirofish.positive_sentiment > 0) {
+      recommendations.push(`"${bestMirofish.name}" shows strongest social sentiment (${bestMirofish.mirofish.positive_sentiment.toFixed(1)}% positive)` + 
+        (bestMirofish.mirofish.negative_sentiment > 10 ? ` — ${bestMirofish.mirofish.negative_sentiment.toFixed(1)}% negative warrants review` : ''))
+    }
+    
+    // Rec 4: ViNet insight if available
+    const minViNet = availableCreatives.reduce((worst, c) => c.vinet.mean_saliency < worst.vinet.mean_saliency ? c : worst, availableCreatives[0])
+    if (minViNet && minViNet.vinet.mean_saliency > 0 && minViNet.vinet.mean_saliency < 0.1) {
+      recommendations.push(`Low visual saliency across all clips (${minViNet.vinet.mean_saliency.toFixed(3)}) — add product/CTA visual elements`)
+    }
+  }
 
   return (
     <>

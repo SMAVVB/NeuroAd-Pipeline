@@ -35,7 +35,8 @@ function TRIBEContent() {
   const { availableCreatives, selectedCreativeId, setSelectedCreativeId } = useDashboard()
   const [isExplainerOpen, setIsExplainerOpen] = useState(false)
 
-  const selectedCreative = availableCreatives.find(c => c.id === selectedCreativeId) || availableCreatives[0]
+  const creatives = availableCreatives ?? []
+  const selectedCreative = creatives.find(c => c.id === selectedCreativeId) || creatives[0]
 
   if (!selectedCreative) {
     return (

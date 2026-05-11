@@ -6,14 +6,14 @@ from datetime import datetime
 from pathlib import Path
 
 # --- KONFIGURATION ---
-# Ollama proxy URL (Port 9002) → Lemonade (Port 8888)
-OLLAMA_URL = "http://127.0.0.1:9002/v1/chat/completions"
+# Ollama local API URL
+OLLAMA_URL = "http://127.0.0.1:11434/v1/chat/completions"
 SEARXNG_URL = "http://127.0.0.1:8889/search"
 RAW_DATA_DIR = "raw_data" 
 
-MODEL_WORKHORSE = "extra.gemma-4-31B-it-Q4_K_M.gguf"
-MODEL_JUDGE = "extra.DeepSeek-R1-Distill-Llama-70B-Q4_K_M.gguf"
-MODEL_FAST = "extra.moonshotai_Kimi-Linear-48B-A3B-Instruct-Q5_K_M.gguf"
+MODEL_WORKHORSE = "qwen3.6-64k:latest"
+MODEL_JUDGE = "qwen3.6-64k:latest"
+MODEL_FAST = "qwen3.6-64k:latest"
 MEMORY_FILE = "agent_learnings.json"
 
 def load_memory() -> str:
@@ -42,11 +42,12 @@ def ask_llm(system_prompt: str, user_prompt: str, model_name: str, temperature: 
             {"role": "user", "content": user_prompt}
         ],
         "temperature": temperature,
-        "max_tokens": 4096
+        "max_tokens": 8192,
+        "think": False
     }
 
     # DEFAULT timeout: 180 seconds (3 minutes)
-    default_timeout = 180
+    default_timeout = 900
 
     # AUTO-RETRY LOOP with exponential backoff
     for attempt in range(max_retries):
@@ -62,7 +63,7 @@ def ask_llm(system_prompt: str, user_prompt: str, model_name: str, temperature: 
                 time.sleep(5) # 5 Sekunden abkühlen
                 continue      # Nächster Versuch!
 
-            content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+            content = data.get("choices", [{}])[0].get("message", {}).get("content", "") or data.get("choices", [{}])[0].get("message", {}).get("reasoning", "")
 
             # Token logging after successful API call
             try:
@@ -75,7 +76,7 @@ def ask_llm(system_prompt: str, user_prompt: str, model_name: str, temperature: 
                     "project": os.path.basename(os.getcwd()),
                     "tps": usage.get("tokens_per_second", 0)
                 }
-                log_file = Path.home() / ".lemonade_token_log.jsonl"
+                log_file = Path.home() / ".neuroad_token_log.jsonl"
                 with open(log_file, "a", encoding="utf-8") as f:
                     f.write(json.dumps(log_entry) + "\n")
             except Exception:

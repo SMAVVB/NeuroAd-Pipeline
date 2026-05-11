@@ -1,0 +1,73 @@
+{
+  "campaign": "nike_summer_26",
+  "brand": "nike",
+  "generated_at": "2026-05-10T20:30:40.391110",
+  "creative_rankings": {
+    "overall": [
+      "campaigns/nike_summer_26/assets/nike_clip_B.mp4"
+    ],
+    "by_module": {
+      "tribe": [
+        "campaigns/nike_summer_26/assets/nike_clip_B.mp4"
+      ],
+      "clip": [
+        "campaigns/nike_summer_26/assets/nike_clip_B.mp4"
+      ],
+      "vinet": [
+        "campaigns/nike_summer_26/assets/nike_clip_B.mp4"
+      ]
+    }
+  },
+  "module_analyses": {
+    "tribe": {
+      "summary": "LLM API Error: Timeout or Unreachable",
+      "strengths": [
+        "Starke neurale Aktivierung (0.213)",
+        "Starke Gesichts-Response (Fokus auf Menschen)",
+        "Starke Motion-Response (Bewegungserkennung)",
+        "Hoher emotionaler Impact",
+        "Hohe Engagement-Stabilität über den gesamten Videoverlauf"
+      ],
+      "weaknesses": [
+        "Niedrige neurale Aktivierung (<0.18)",
+        "Geringer emotionaler Impact",
+        "Schwache Motion-Response"
+      ],
+      "recommendations": [
+        "Stärken Sie den emotionalen Call-to-Action",
+        "Integrieren Sie mehr dynamische Bewegungselemente"
+      ]
+    },
+    "clip": {
+      "summary": "LLM API Error: Timeout or Unreachable",
+      "strengths": [
+        "Klare visuelle Ausrichtung: 'brand'"
+      ],
+      "weaknesses": [
+        "Geringe Label-Diskriminierung (zu viele ähnliche Scores)",
+        "Schwache Brand-Konsistenz (0.333)"
+      ],
+      "recommendations": [
+        "Stärken Sie die visuelle Brand Identity",
+        "Schärfen Sie die visuelle Botschaft"
+      ]
+    },
+    "vinet": {
+      "summary": "LLM API Error: Timeout or Unreachable",
+      "strengths": [
+        "Konsistente Aufmerksamkeit über den Videoverlauf"
+      ],
+      "weaknesses": [
+        "Niedrige Aufmerksamkeitssteuerung (0.000)",
+        "Schwache Fokuspunkt-Qualität"
+      ],
+      "recommendations": [
+        "Machen Sie den Call-to-Action sichtbarer",
+        "Lenken Sie die Aufmerksamkeit stärker auf das Produkt",
+        "Stärken Sie die Markenpräsenz visuell"
+      ]
+    }
+  },
+  "master_summary": "LLM API Error: Timeout or Unreachable",
+  "recommendations": []
+}
