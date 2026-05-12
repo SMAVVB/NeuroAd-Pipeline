@@ -252,7 +252,7 @@ export function BrainViewer({ tribeScores, size = 'md' }: BrainViewerProps) {
       renderer.domElement.removeEventListener('touchend', handleDragEnd)
       renderer.domElement.removeEventListener('mouseleave', handleDragEnd)
       container.removeChild(renderer.domElement)
-      scene.dispose()
+      scene?.dispose()
       renderer.dispose()
     }
   }, [])

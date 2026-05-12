@@ -13,7 +13,8 @@ import { Trophy, Download, FileJson, Medal, CheckCircle, Lightbulb } from 'lucid
 function ReportContent() {
   const { availableCreatives, selectedCampaign } = useDashboard()
 
-  if (!selectedCampaign || availableCreatives.length === 0) {
+  const safeCreatives = availableCreatives || []
+  if (!selectedCampaign || safeCreatives.length === 0) {
     return (
       <div className="flex items-center justify-center h-[60vh] text-muted-foreground">
         Please select a campaign with creatives
@@ -22,7 +23,7 @@ function ReportContent() {
   }
 
   // Sort creatives by overall score
-  const rankedCreatives = [...availableCreatives].sort((a, b) => b.overall_score - a.overall_score)
+  const rankedCreatives = [...safeCreatives].sort((a, b) => b.overall_score - a.overall_score)
   const winner = rankedCreatives[0]
 
   const handleExportPDF = () => {
