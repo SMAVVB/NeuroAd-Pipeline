@@ -70,7 +70,8 @@ function MiroFishContent() {
   const [graphData, setGraphData] = useState<GraphData | undefined>(undefined)
   const [loadingGraph, setLoadingGraph] = useState(false)
 
-  const selectedCreative = availableCreatives.find(c => c.id === selectedCreativeId) || availableCreatives[0]
+  const safeCreatives = availableCreatives || []
+  const selectedCreative = safeCreatives.find(c => c.id === selectedCreativeId) || safeCreatives[0]
 
   if (!selectedCreative) {
     return (
@@ -138,9 +139,9 @@ function MiroFishContent() {
       </Collapsible>
 
       {/* Creative selector */}
-      <Tabs value={selectedCreativeId || availableCreatives[0]?.id} onValueChange={setSelectedCreativeId} className="mb-6">
+      <Tabs value={selectedCreativeId || safeCreatives[0]?.id} onValueChange={setSelectedCreativeId} className="mb-6">
         <TabsList>
-          {availableCreatives.map((creative) => (
+          {safeCreatives.map((creative) => (
             <TabsTrigger key={creative.id} value={creative.id} className="text-xs">
               {creative.name}
             </TabsTrigger>
