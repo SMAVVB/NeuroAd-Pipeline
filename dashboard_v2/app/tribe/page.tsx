@@ -180,9 +180,9 @@ function TRIBEContent() {
         </CardHeader>
         <CardContent>
           {/* Creative selector tabs */}
-          <Tabs value={selectedCreativeId || availableCreatives[0]?.id} onValueChange={setSelectedCreativeId} className="mb-6">
+          <Tabs value={selectedCreativeId || creatives[0]?.id} onValueChange={setSelectedCreativeId} className="mb-6">
             <TabsList>
-              {availableCreatives.map((creative) => (
+              {creatives.map((creative) => (
                 <TabsTrigger key={creative.id} value={creative.id} className="text-xs">
                   {creative.name}
                 </TabsTrigger>

@@ -119,8 +119,8 @@ function RadarChart({ dimensions }: { dimensions: Record<string, number> }) {
 function CLIPContent() {
   const { availableCreatives, selectedCreativeId, setSelectedCreativeId } = useDashboard()
 
-  const safeCreatives = availableCreatives || []
-  const selectedCreative = safeCreatives.find(c => c.id === selectedCreativeId) || safeCreatives[0]
+  const safeCreatives = Array.isArray(availableCreatives) ? availableCreatives : []
+  const selectedCreative = safeCreatives.find(c => c.id === selectedCreativeId) || (safeCreatives.length > 0 ? safeCreatives[0] : null)
 
   if (!selectedCreative) {
     return (

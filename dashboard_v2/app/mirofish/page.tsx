@@ -103,8 +103,8 @@ function MiroFishContent() {
 
   const sentimentMetrics = [
     { label: 'Target Audience Match', value: selectedCreative.mirofish.target_audience_match },
-    { label: 'Emotional Resonance', value: selectedCreative.mirofish.emotional_resonance },
-    { label: 'Shareability', value: selectedCreative.mirofish.shareability },
+    { label: 'Emotional Resonance', value: selectedCreative?.mirofish?.positive_sentiment || 0 },
+    { label: 'Shareability', value: selectedCreative?.mirofish?.virality_score || 0 },
     { label: 'Brand Affinity', value: selectedCreative.mirofish.brand_affinity },
   ]
 
@@ -188,10 +188,10 @@ function MiroFishContent() {
           <div className="mt-6 pt-6 border-t flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">Social Score</p>
-              <p className="text-3xl font-mono font-semibold">{(selectedCreative.mirofish.social_score * 100).toFixed(0)}%</p>
+              <p className="text-3xl font-mono font-semibold">{Math.round((selectedCreative?.mirofish?.positive_sentiment || 0) * 100)}%</p>
             </div>
             <div className="px-4 py-2 bg-indigo/10 rounded-lg border border-indigo/20">
-              <span className="text-2xl font-bold text-indigo">{selectedCreative.mirofish.grade}</span>
+              <span className="text-2xl font-bold text-indigo">{selectedCreative?.overall?.grade}</span>
             </div>
           </div>
         </CardContent>

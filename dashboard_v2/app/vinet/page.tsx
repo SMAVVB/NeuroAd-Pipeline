@@ -108,7 +108,8 @@ function ViNetContent() {
     )
   }
 
-  const hasData = selectedCreative.vinet.mean_saliency > 0.1
+  const vinet_data = selectedCreative?.vinet || {}
+  const hasData = vinet_data.mean_saliency > 0.1
 
   return (
     <>
@@ -143,19 +144,19 @@ function ViNetContent() {
         <AttentionMetricCard
           icon={Package}
           label="Product Attention"
-          value={selectedCreative.vinet.product_attention}
+          value={selectedCreative?.vinet?.product_attention || 0}
           hasData={hasData}
         />
         <AttentionMetricCard
           icon={Bookmark}
           label="Brand Attention"
-          value={selectedCreative.vinet.brand_attention}
+          value={selectedCreative?.vinet?.brand_attention || 0}
           hasData={hasData}
         />
         <AttentionMetricCard
           icon={MousePointer}
           label="CTA Attention"
-          value={selectedCreative.vinet.cta_attention}
+          value={selectedCreative?.vinet?.cta_attention || 0}
           hasData={hasData}
         />
       </div>
@@ -169,22 +170,22 @@ function ViNetContent() {
           <div className="grid gap-4 md:grid-cols-2">
             <MetricBar
               label="Center Bias"
-              value={selectedCreative.vinet.center_bias}
+              value={selectedCreative?.vinet?.center_bias || 0}
               showPercentage
-              colorClass={selectedCreative.vinet.center_bias > 0.8 ? 'bg-amber-500' : 'bg-indigo'}
+              colorClass={(selectedCreative?.vinet?.center_bias || 0) > 0.8 ? 'bg-amber-500' : 'bg-indigo'}
             />
             <MetricBar
               label="Temporal Variance"
-              value={selectedCreative.vinet.temporal_variance}
+              value={selectedCreative?.vinet?.temporal_variance || 0}
               showPercentage
-              colorClass={selectedCreative.vinet.temporal_variance > 0.3 ? 'bg-amber-500' : 'bg-emerald-500'}
+              colorClass={(selectedCreative?.vinet?.temporal_variance || 0) > 0.3 ? 'bg-amber-500' : 'bg-emerald-500'}
             />
           </div>
           <div className="mt-4 p-4 bg-muted/50 rounded-lg">
             <p className="text-sm text-muted-foreground">
               <span className="font-medium text-foreground">Mean Saliency: </span>
-              <span className="font-mono">{selectedCreative.vinet.mean_saliency.toFixed(3)}</span>
-              {selectedCreative.vinet.mean_saliency < 0.1 && (
+              <span className="font-mono">{(selectedCreative?.vinet?.mean_saliency || 0).toFixed(3)}</span>
+              {(selectedCreative?.vinet?.mean_saliency || 0) < 0.1 && (
                 <span className="ml-2 text-amber-600">— Low saliency indicates weak visual anchors</span>
               )}
             </p>
